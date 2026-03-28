@@ -26,9 +26,11 @@ export const ZoomEffect: React.FC<ZoomEffectProps> = ({ config, children }) => {
     extrapolateRight: 'clamp',
   });
 
+  // BUG-003: Compensate translate by (scale - 1) factor
   const scale = interpolate(progress, [0, 1], [1, config.scale]);
-  const translateX = interpolate(progress, [0, 1], [0, -(config.x - 50) * 0.5]);
-  const translateY = interpolate(progress, [0, 1], [0, -(config.y - 50) * 0.5]);
+  const scaleFactor = scale - 1;
+  const translateX = interpolate(progress, [0, 1], [0, -(config.x - 50) * scaleFactor * 0.02]);
+  const translateY = interpolate(progress, [0, 1], [0, -(config.y - 50) * scaleFactor * 0.02]);
 
   return (
     <div

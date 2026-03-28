@@ -41,18 +41,20 @@ export async function projectRoutes(app: FastifyInstance) {
     },
   );
 
-  // Update project
+  // Update project (SEC-005: whitelist allowed fields)
   app.patch<{ Params: { id: string }; Body: Record<string, unknown> }>(
     '/api/projects/:id',
     async (request) => {
       const existing = db.select().from(projects).where(eq(projects.id, request.params.id)).get();
       if (!existing) throw new AppError(404, 'Project not found', 'NOT_FOUND');
 
-      db.update(projects)
-        .set({ ...request.body, updatedAt: new Date() } as Record<string, unknown>)
-        .where(eq(projects.id, request.params.id))
-        .run();
+      const allowedFields = ['name', 'description', 'nicheId', 'settings'];
+      const updates: Record<string, unknown> = { updatedAt: new Date() };
+      for (const field of allowedFields) {
+        if (request.body[field] !== undefined) updates[field] = request.body[field];
+      }
 
+      db.update(projects).set(updates).where(eq(projects.id, request.params.id)).run();
       return db.select().from(projects).where(eq(projects.id, request.params.id)).get();
     },
   );

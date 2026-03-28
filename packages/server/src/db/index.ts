@@ -172,5 +172,15 @@ export function initializeDatabase() {
       value TEXT NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    -- DAT-006: Indexes for common queries
+    CREATE INDEX IF NOT EXISTS idx_transcriptions_project ON transcriptions(project_id);
+    CREATE INDEX IF NOT EXISTS idx_analyses_project ON analyses(project_id);
+    CREATE INDEX IF NOT EXISTS idx_scenes_project ON scenes(project_id);
+    CREATE INDEX IF NOT EXISTS idx_renders_project ON renders(project_id);
+    CREATE INDEX IF NOT EXISTS idx_renders_status ON renders(status);
+    CREATE INDEX IF NOT EXISTS idx_batch_items_job ON batch_items(batch_job_id);
+    CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+    CREATE INDEX IF NOT EXISTS idx_projects_created ON projects(created_at);
   `);
 }

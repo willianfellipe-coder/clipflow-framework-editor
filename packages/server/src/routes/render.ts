@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import path from 'path';
 import { createReadStream, existsSync, statSync } from 'fs';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
@@ -6,6 +7,7 @@ import { projects, renders, scenes, transcriptions } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { FORMAT_CONFIGS } from '@clip/shared';
 import type { ExportFormat, QualityPreset } from '@clip/shared';
+import { PATHS } from '../config.js';
 import { remotionService } from '../services/remotion.service.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
@@ -131,18 +133,25 @@ export async function renderRoutes(app: FastifyInstance) {
       throw new AppError(400, 'Render not complete', 'NOT_READY');
     }
 
-    if (!existsSync(render.outputPath)) {
+    // SEC-002: Path traversal protection
+    const resolvedPath = path.resolve(render.outputPath);
+    const rendersDir = path.resolve(PATHS.renders);
+    if (!resolvedPath.startsWith(rendersDir)) {
+      throw new AppError(403, 'Access denied', 'PATH_TRAVERSAL');
+    }
+
+    if (!existsSync(resolvedPath)) {
       throw new AppError(404, 'Rendered file not found', 'FILE_NOT_FOUND');
     }
 
-    const stat = statSync(render.outputPath);
+    const stat = statSync(resolvedPath);
     const filename = `clipflow_${render.format}_${render.id}.mp4`;
 
     return reply
       .header('Content-Type', 'video/mp4')
       .header('Content-Length', stat.size)
       .header('Content-Disposition', `attachment; filename="${filename}"`)
-      .send(createReadStream(render.outputPath));
+      .send(createReadStream(resolvedPath));
   });
 
   // Cancel render

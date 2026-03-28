@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { projects, transcriptions, analyses, scenes, templates } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, ne } from 'drizzle-orm';
 import { claudeService } from '../services/claude.service.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
@@ -16,10 +16,6 @@ export async function analysisRoutes(app: FastifyInstance) {
     const project = db.select().from(projects).where(eq(projects.id, request.params.id)).get();
     if (!project) throw new AppError(404, 'Project not found', 'NOT_FOUND');
 
-    if (project.status === 'analyzing') {
-      throw new AppError(409, 'Analysis already in progress', 'ALREADY_ANALYZING');
-    }
-
     // Check transcription exists
     const transcription = db.select().from(transcriptions)
       .where(eq(transcriptions.projectId, project.id))
@@ -28,11 +24,14 @@ export async function analysisRoutes(app: FastifyInstance) {
       throw new AppError(400, 'Transcription required before analysis. Run transcription first.', 'NO_TRANSCRIPTION');
     }
 
-    // Update status
-    db.update(projects)
+    // DAT-001: Atomic status update to prevent race conditions
+    const updated = db.update(projects)
       .set({ status: 'analyzing', updatedAt: new Date() })
-      .where(eq(projects.id, project.id))
+      .where(and(eq(projects.id, project.id), ne(projects.status, 'analyzing')))
       .run();
+    if (updated.changes === 0) {
+      throw new AppError(409, 'Analysis already in progress', 'ALREADY_ANALYZING');
+    }
 
     reply.status(202).send({ message: 'Analysis started', projectId: project.id });
 

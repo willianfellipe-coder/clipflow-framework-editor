@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { existsSync } from 'fs';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { batchJobs, batchItems } from '../db/schema.js';
@@ -22,6 +23,16 @@ export async function batchRoutes(app: FastifyInstance) {
 
     if (!videoPaths || videoPaths.length === 0) {
       throw new AppError(400, 'At least one video path is required', 'NO_VIDEOS');
+    }
+
+    // SEC-008: Validate video paths exist and are not traversal attempts
+    for (const vp of videoPaths) {
+      if (vp.includes('..') || vp.includes('\0')) {
+        throw new AppError(400, `Invalid video path: ${vp}`, 'INVALID_PATH');
+      }
+      if (!existsSync(vp)) {
+        throw new AppError(400, `Video file not found: ${vp}`, 'FILE_NOT_FOUND');
+      }
     }
 
     const id = nanoid();

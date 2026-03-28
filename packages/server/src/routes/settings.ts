@@ -55,4 +55,9 @@ export async function settingsRoutes(app: FastifyInstance) {
       database: true,
     };
   });
+
+  // GAP-007: Health check for load balancers and monitoring
+  app.get('/api/health', async () => {
+    return { status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() };
+  });
 }
