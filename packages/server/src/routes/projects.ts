@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
-import { projects } from '../db/schema.js';
+import { projects, templates, scenes } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { AppError } from '../utils/errors.js';
@@ -56,6 +56,52 @@ export async function projectRoutes(app: FastifyInstance) {
       return db.select().from(projects).where(eq(projects.id, request.params.id)).get();
     },
   );
+
+  // Apply template to project
+  app.post<{
+    Params: { id: string };
+    Body: { templateId: string };
+  }>('/api/projects/:id/apply-template', async (request) => {
+    const project = db.select().from(projects).where(eq(projects.id, request.params.id)).get();
+    if (!project) throw new AppError(404, 'Project not found', 'NOT_FOUND');
+
+    const template = db.select().from(templates).where(eq(templates.id, request.body.templateId)).get();
+    if (!template) throw new AppError(404, 'Template not found', 'NOT_FOUND');
+
+    const now = new Date();
+
+    // Update project with template reference
+    db.update(projects).set({
+      templateId: template.id,
+      nicheId: template.niche,
+      updatedAt: now,
+    }).where(eq(projects.id, project.id)).run();
+
+    // Apply template defaults to existing scenes
+    const projectScenes = db.select().from(scenes).where(eq(scenes.projectId, project.id)).all();
+
+    if (projectScenes.length > 0) {
+      const effects = template.defaultEffects || '[]';
+      const transitions = template.defaultTransitions ? JSON.parse(template.defaultTransitions) : ['cut'];
+      const defaultTransition = transitions[0] || 'cut';
+
+      for (const scene of projectScenes) {
+        db.update(scenes).set({
+          effects,
+          transitionIn: defaultTransition,
+          transitionOut: defaultTransition,
+        }).where(eq(scenes.id, scene.id)).run();
+      }
+    }
+
+    // Increment usage count
+    db.update(templates).set({
+      usageCount: (template.usageCount || 0) + 1,
+      updatedAt: now,
+    }).where(eq(templates.id, template.id)).run();
+
+    return db.select().from(projects).where(eq(projects.id, project.id)).get();
+  });
 
   // Delete project
   app.delete<{ Params: { id: string } }>('/api/projects/:id', async (request, reply) => {

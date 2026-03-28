@@ -1,22 +1,37 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useTemplateStore } from '@/stores/templateStore';
-import { NICHES } from '@clip/shared';
-
-const nicheIcons: Record<string, string> = {
-  fitness: 'Dumbbell',
-  tech: 'Monitor',
-  food: 'ChefHat',
-  education: 'BookOpen',
-  ecommerce: 'ShoppingBag',
-  podcast: 'Mic',
-};
+import { NicheSelector } from '@/components/template/NicheSelector';
+import { TemplateCard } from '@/components/template/TemplateCard';
+import { TemplatePreview } from '@/components/template/TemplatePreview';
+import { TemplateCreateForm } from '@/components/template/TemplateCreateForm';
+import type { Template } from '@clip/shared';
 
 export function Templates() {
-  const { templates, fetchTemplates, loading } = useTemplateStore();
+  const {
+    fetchTemplates, filteredTemplates, nicheFilter, setNicheFilter,
+    createTemplate, deleteTemplate, loading,
+  } = useTemplateStore();
+
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
+
+  const templates = filteredTemplates();
+
+  const handleCreate = async (data: Record<string, unknown>) => {
+    await createTemplate(data);
+    setShowCreateForm(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this template?')) return;
+    await deleteTemplate(id);
+    setPreviewTemplate(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -27,46 +42,52 @@ export function Templates() {
             Pre-configured editing styles for different content niches
           </p>
         </div>
+        <button
+          onClick={() => setShowCreateForm(true)}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Create Custom
+        </button>
       </div>
 
+      {/* Niche filter */}
+      <NicheSelector selected={nicheFilter} onChange={setNicheFilter} />
+
+      {/* Template grid */}
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading templates...</p>
+      ) : templates.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No templates found{nicheFilter !== 'all' ? ` for "${nicheFilter}"` : ''}.
+        </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => {
-            const niche = NICHES[template.niche as keyof typeof NICHES];
-            const colors = niche?.colorPalette || ['#6366F1'];
-            return (
-              <div
-                key={template.id}
-                className="rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/50"
-              >
-                <div
-                  className="mb-3 flex h-24 items-center justify-center rounded"
-                  style={{ backgroundColor: colors[0] + '20' }}
-                >
-                  <span className="text-3xl font-bold" style={{ color: colors[0] }}>
-                    {template.niche.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <h3 className="font-semibold">{template.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {template.description}
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="rounded bg-secondary px-2 py-0.5 text-xs">
-                    {template.niche}
-                  </span>
-                  {template.isBuiltIn && (
-                    <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                      Built-in
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {templates.map((template) => (
+            <TemplateCard
+              key={template.id}
+              template={template}
+              onPreview={() => setPreviewTemplate(template)}
+            />
+          ))}
         </div>
+      )}
+
+      {/* Preview modal */}
+      {previewTemplate && (
+        <TemplatePreview
+          template={previewTemplate}
+          onClose={() => setPreviewTemplate(null)}
+          onDelete={() => handleDelete(previewTemplate.id)}
+        />
+      )}
+
+      {/* Create form modal */}
+      {showCreateForm && (
+        <TemplateCreateForm
+          onClose={() => setShowCreateForm(false)}
+          onCreate={handleCreate}
+        />
       )}
     </div>
   );

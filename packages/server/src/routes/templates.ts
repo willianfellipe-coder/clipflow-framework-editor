@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { templates } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -17,23 +18,101 @@ export async function templateRoutes(app: FastifyInstance) {
     return row;
   });
 
-  // Create template (stub)
-  app.post('/api/templates', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Template creation coming in Phase 6' });
+  // Create custom template
+  app.post<{
+    Body: {
+      name: string;
+      description?: string;
+      niche: string;
+      composition?: string;
+      defaultEffects?: string[];
+      defaultTransitions?: string[];
+      colorPalette?: string[];
+      hookConfig?: Record<string, unknown>;
+      ctaConfig?: Record<string, unknown>;
+      captionStyle?: string;
+      pacing?: string;
+    };
+  }>('/api/templates', async (request, reply) => {
+    const id = nanoid();
+    const now = new Date();
+    const body = request.body;
+
+    db.insert(templates).values({
+      id,
+      name: body.name,
+      description: body.description || null,
+      niche: body.niche,
+      isBuiltIn: false,
+      isPublished: true,
+      composition: body.composition || 'ReelComposition',
+      defaultEffects: body.defaultEffects ? JSON.stringify(body.defaultEffects) : null,
+      defaultTransitions: body.defaultTransitions ? JSON.stringify(body.defaultTransitions) : null,
+      colorPalette: body.colorPalette ? JSON.stringify(body.colorPalette) : null,
+      hookConfig: body.hookConfig ? JSON.stringify(body.hookConfig) : null,
+      ctaConfig: body.ctaConfig ? JSON.stringify(body.ctaConfig) : null,
+      usageCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    }).run();
+
+    return reply.status(201).send(
+      db.select().from(templates).where(eq(templates.id, id)).get(),
+    );
   });
 
-  // Update template (stub)
-  app.patch('/api/templates/:id', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Template update coming in Phase 6' });
+  // Update template
+  app.patch<{
+    Params: { id: string };
+    Body: Record<string, unknown>;
+  }>('/api/templates/:id', async (request) => {
+    const existing = db.select().from(templates).where(eq(templates.id, request.params.id)).get();
+    if (!existing) throw new AppError(404, 'Template not found', 'NOT_FOUND');
+
+    const updates: Record<string, unknown> = {};
+    const body = request.body;
+
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.niche !== undefined) updates.niche = body.niche;
+    if (body.composition !== undefined) updates.composition = body.composition;
+    if (body.defaultEffects !== undefined) updates.defaultEffects = JSON.stringify(body.defaultEffects);
+    if (body.defaultTransitions !== undefined) updates.defaultTransitions = JSON.stringify(body.defaultTransitions);
+    if (body.colorPalette !== undefined) updates.colorPalette = JSON.stringify(body.colorPalette);
+    if (body.hookConfig !== undefined) updates.hookConfig = JSON.stringify(body.hookConfig);
+    if (body.ctaConfig !== undefined) updates.ctaConfig = JSON.stringify(body.ctaConfig);
+    if (body.isPublished !== undefined) updates.isPublished = body.isPublished;
+
+    updates.updatedAt = new Date();
+
+    db.update(templates).set(updates).where(eq(templates.id, request.params.id)).run();
+    return db.select().from(templates).where(eq(templates.id, request.params.id)).get();
   });
 
-  // Delete template (stub)
-  app.delete('/api/templates/:id', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Template deletion coming in Phase 6' });
+  // Delete template (only custom, not built-in)
+  app.delete<{ Params: { id: string } }>('/api/templates/:id', async (request, reply) => {
+    const existing = db.select().from(templates).where(eq(templates.id, request.params.id)).get();
+    if (!existing) throw new AppError(404, 'Template not found', 'NOT_FOUND');
+    if (existing.isBuiltIn) throw new AppError(403, 'Cannot delete built-in templates', 'FORBIDDEN');
+
+    db.delete(templates).where(eq(templates.id, request.params.id)).run();
+    return reply.status(204).send();
   });
 
-  // Preview template (stub)
-  app.post('/api/templates/:id/preview', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Template preview coming in Phase 6' });
+  // Get template preview (parsed config summary)
+  app.get<{ Params: { id: string } }>('/api/templates/:id/preview', async (request) => {
+    const row = db.select().from(templates).where(eq(templates.id, request.params.id)).get();
+    if (!row) throw new AppError(404, 'Template not found', 'NOT_FOUND');
+
+    return {
+      ...row,
+      defaultEffects: row.defaultEffects ? JSON.parse(row.defaultEffects) : [],
+      defaultTransitions: row.defaultTransitions ? JSON.parse(row.defaultTransitions) : [],
+      colorPalette: row.colorPalette ? JSON.parse(row.colorPalette) : [],
+      hookConfig: row.hookConfig ? JSON.parse(row.hookConfig) : null,
+      ctaConfig: row.ctaConfig ? JSON.parse(row.ctaConfig) : null,
+      musicConfig: row.musicConfig ? JSON.parse(row.musicConfig) : null,
+      layoutConfig: row.layoutConfig ? JSON.parse(row.layoutConfig) : null,
+    };
   });
 }
