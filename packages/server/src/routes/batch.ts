@@ -1,27 +1,120 @@
 import type { FastifyInstance } from 'fastify';
+import { nanoid } from 'nanoid';
+import { db } from '../db/index.js';
+import { batchJobs, batchItems } from '../db/schema.js';
+import { eq, asc } from 'drizzle-orm';
+import { batchService } from '../services/batch.service.js';
+import { AppError } from '../utils/errors.js';
 
 export async function batchRoutes(app: FastifyInstance) {
-  app.post('/api/batch', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Batch coming in Phase 8' });
+  // Create batch job
+  app.post<{
+    Body: {
+      name: string;
+      videoPaths: string[];
+      templateId?: string;
+      captionStyleId?: string;
+      formats?: string[];
+      settings?: Record<string, unknown>;
+    };
+  }>('/api/batch', async (request, reply) => {
+    const { name, videoPaths, templateId, captionStyleId, formats, settings } = request.body;
+
+    if (!videoPaths || videoPaths.length === 0) {
+      throw new AppError(400, 'At least one video path is required', 'NO_VIDEOS');
+    }
+
+    const id = nanoid();
+    const now = new Date();
+
+    db.insert(batchJobs).values({
+      id,
+      name: name || `Batch ${new Date().toLocaleDateString()}`,
+      status: 'pending',
+      templateId: templateId || null,
+      captionStyleId: captionStyleId || null,
+      formats: JSON.stringify(formats || ['reel_9x16']),
+      totalVideos: videoPaths.length,
+      completedVideos: 0,
+      failedVideos: 0,
+      settings: settings ? JSON.stringify(settings) : null,
+      createdAt: now,
+    }).run();
+
+    // Create batch items
+    for (let i = 0; i < videoPaths.length; i++) {
+      db.insert(batchItems).values({
+        id: nanoid(),
+        batchJobId: id,
+        sourceVideoPath: videoPaths[i],
+        status: 'pending',
+        order: i + 1,
+        createdAt: now,
+      }).run();
+    }
+
+    const job = db.select().from(batchJobs).where(eq(batchJobs.id, id)).get();
+    const items = db.select().from(batchItems).where(eq(batchItems.batchJobId, id)).orderBy(asc(batchItems.order)).all();
+
+    return reply.status(201).send({ ...job, items });
   });
 
-  app.get('/api/batch', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Batch coming in Phase 8' });
+  // List batch jobs
+  app.get('/api/batch', async () => {
+    return db.select().from(batchJobs).all();
   });
 
-  app.get('/api/batch/:id', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Batch coming in Phase 8' });
+  // Get batch job details with items
+  app.get<{ Params: { id: string } }>('/api/batch/:id', async (request) => {
+    const job = db.select().from(batchJobs).where(eq(batchJobs.id, request.params.id)).get();
+    if (!job) throw new AppError(404, 'Batch job not found', 'NOT_FOUND');
+
+    const items = db.select().from(batchItems)
+      .where(eq(batchItems.batchJobId, job.id))
+      .orderBy(asc(batchItems.order))
+      .all();
+
+    return { ...job, items };
   });
 
-  app.post('/api/batch/:id/start', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Batch coming in Phase 8' });
+  // Start/resume batch processing
+  app.post<{ Params: { id: string } }>('/api/batch/:id/start', async (request, reply) => {
+    const job = db.select().from(batchJobs).where(eq(batchJobs.id, request.params.id)).get();
+    if (!job) throw new AppError(404, 'Batch job not found', 'NOT_FOUND');
+
+    if (job.status === 'processing') {
+      throw new AppError(409, 'Batch already processing', 'ALREADY_PROCESSING');
+    }
+
+    reply.status(202).send({ message: 'Batch processing started', batchId: job.id });
+
+    batchService.processBatch(job.id).catch((err) => {
+      app.log.error(err, 'Batch processing failed');
+      db.update(batchJobs).set({ status: 'error' }).where(eq(batchJobs.id, job.id)).run();
+    });
   });
 
-  app.post('/api/batch/:id/pause', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Batch coming in Phase 8' });
+  // Pause batch processing
+  app.post<{ Params: { id: string } }>('/api/batch/:id/pause', async (request) => {
+    const job = db.select().from(batchJobs).where(eq(batchJobs.id, request.params.id)).get();
+    if (!job) throw new AppError(404, 'Batch job not found', 'NOT_FOUND');
+
+    db.update(batchJobs).set({ status: 'paused' }).where(eq(batchJobs.id, job.id)).run();
+    return { message: 'Batch paused' };
   });
 
-  app.delete('/api/batch/:id', async (_request, reply) => {
-    return reply.status(501).send({ error: 'NOT_IMPLEMENTED', message: 'Batch coming in Phase 8' });
+  // Delete/cancel batch job
+  app.delete<{ Params: { id: string } }>('/api/batch/:id', async (request, reply) => {
+    const job = db.select().from(batchJobs).where(eq(batchJobs.id, request.params.id)).get();
+    if (!job) throw new AppError(404, 'Batch job not found', 'NOT_FOUND');
+
+    // Mark as paused to stop processing
+    db.update(batchJobs).set({ status: 'paused' }).where(eq(batchJobs.id, job.id)).run();
+
+    // Delete items and job
+    db.delete(batchItems).where(eq(batchItems.batchJobId, job.id)).run();
+    db.delete(batchJobs).where(eq(batchJobs.id, job.id)).run();
+
+    return reply.status(204).send();
   });
 }

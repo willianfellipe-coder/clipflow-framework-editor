@@ -1,0 +1,21 @@
+{
+  "name": "@clip/mcp",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./src/index.ts",
+  "bin": {
+    "clipflow-mcp": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "~5.5.4"
+  }
+}
