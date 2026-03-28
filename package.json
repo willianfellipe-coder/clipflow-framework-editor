@@ -1,0 +1,16 @@
+{
+  "name": "clipflow",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:push": "turbo db:push --filter=@clip/server",
+    "db:generate": "turbo db:generate --filter=@clip/server"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "~5.5.4"
+  }
+}
