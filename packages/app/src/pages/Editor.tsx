@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Film } from 'lucide-react';
+import { Film, Download } from 'lucide-react';
 import type { PlayerRef } from '@remotion/player';
 import { api } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -11,6 +11,7 @@ import { ScenePanel } from '@/components/editor/ScenePanel';
 import { VideoPreview } from '@/components/preview/VideoPreview';
 import { TimelineEditor } from '@/components/timeline/TimelineEditor';
 import { CaptionEditor } from '@/components/captions/CaptionEditor';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { Project, VideoMeta, WordTimestamp } from '@clip/shared';
 
@@ -41,6 +42,7 @@ export function Editor() {
   const [analysisResult, setAnalysisResult] = useState<{ contentScore?: number; hookAnalysis?: { score: number }; ctaAnalysis?: { score: number }; summary?: string } | null>(null);
   const [previewFormat, setPreviewFormat] = useState('reel_9x16');
   const [inspectorTab, setInspectorTab] = useState<'scene' | 'caption'>('scene');
+  const [showExport, setShowExport] = useState(false);
 
   // Load project data
   useEffect(() => {
@@ -158,11 +160,23 @@ export function Editor() {
             </span>
           )}
           {analysisResult?.contentScore !== undefined && (
-            <span className="ml-auto rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
               Score: {analysisResult.contentScore}/100
             </span>
           )}
+          <button
+            onClick={() => setShowExport(true)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
         </div>
+      )}
+
+      {/* Export dialog */}
+      {showExport && projectId && (
+        <ExportDialog projectId={projectId} onClose={() => setShowExport(false)} />
       )}
 
       {/* Main area */}
