@@ -30,3 +30,11 @@ for (const dir of [PATHS.uploads, PATHS.audio, PATHS.transcriptions, PATHS.rende
   mkdirSync(dir, { recursive: true });
 }
 mkdirSync(resolve(root, 'data/db'), { recursive: true });
+
+// Startup warnings for missing config
+if (!config.anthropicApiKey) {
+  console.warn('[WARN] ANTHROPIC_API_KEY not set — AI analysis will not work');
+}
+if (!config.hfToken) {
+  console.warn('[WARN] HF_TOKEN not set — speaker diarization disabled');
+}

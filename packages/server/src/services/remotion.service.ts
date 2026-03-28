@@ -60,15 +60,23 @@ export class RemotionService {
   async ensureBundle(): Promise<string> {
     if (this.bundled) return this.bundled;
 
-    const { bundle } = await import('@remotion/bundler');
-    const entryPoint = path.join(PATHS.root, 'packages/remotion/src/index.ts');
+    try {
+      const { bundle } = await import('@remotion/bundler');
+      const entryPoint = path.join(PATHS.root, 'packages/remotion/src/index.ts');
 
-    this.bundled = await bundle({
-      entryPoint,
-      webpackOverride: (config) => config,
-    });
+      this.bundled = await bundle({
+        entryPoint,
+        webpackOverride: (config) => config,
+      });
 
-    return this.bundled;
+      return this.bundled;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Remotion bundle failed: ${message}. ` +
+        'Ensure @remotion/bundler is installed and Chromium is available.',
+      );
+    }
   }
 
   /**

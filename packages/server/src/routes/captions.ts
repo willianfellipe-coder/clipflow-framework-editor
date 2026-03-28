@@ -23,7 +23,7 @@ export async function captionRoutes(app: FastifyInstance) {
   });
 
   // Update captions (modified word timestamps)
-  app.put<{
+  app.patch<{
     Params: { id: string };
     Body: { wordTimestamps: { word: string; start: number; end: number; confidence?: number }[] };
   }>('/api/projects/:id/captions', async (request) => {
