@@ -1,9 +1,31 @@
 import path from 'path';
 import os from 'os';
-import { statSync } from 'fs';
+import { statSync, existsSync } from 'fs';
 import { PATHS } from '../config.js';
 import { FORMAT_CONFIGS } from '@clip/shared';
 import type { ExportFormat, QualityPreset } from '@clip/shared';
+
+/** Find Chromium/Chrome executable for Remotion rendering. */
+function findChromium(): string | undefined {
+  const candidates = [
+    // macOS
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+    // Linux
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    // Common paths
+    process.env.CHROME_PATH,
+    process.env.CHROMIUM_PATH,
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
 
 interface RenderProgress {
   percent: number;
@@ -88,6 +110,10 @@ export class RemotionService {
         });
       },
       concurrency: Math.max(1, os.cpus().length - 1),
+      chromiumOptions: {
+        enableMultiProcessOnLinux: true,
+      },
+      browserExecutable: findChromium(),
     });
 
     const stats = statSync(outputPath);

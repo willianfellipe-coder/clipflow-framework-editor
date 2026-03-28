@@ -30,11 +30,28 @@ export async function settingsRoutes(app: FastifyInstance) {
 
   // System check
   app.get('/api/settings/system-check', async () => {
+    const { execSync } = await import('child_process');
+    let ffmpegOk = false;
+    let whisperxOk = false;
+    let chromeOk = false;
+
+    try { execSync('ffmpeg -version', { stdio: 'ignore' }); ffmpegOk = true; } catch {}
+    try { execSync('python3 -c "import whisperx"', { stdio: 'ignore' }); whisperxOk = true; } catch {}
+
+    const chromePaths = [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+    ];
+    const { existsSync } = await import('fs');
+    chromeOk = chromePaths.some((p) => existsSync(p));
+
     return {
       node: process.version,
       platform: process.platform,
-      ffmpeg: false,
-      whisperx: false,
+      ffmpeg: ffmpegOk,
+      whisperx: whisperxOk,
+      chromium: chromeOk,
       database: true,
     };
   });

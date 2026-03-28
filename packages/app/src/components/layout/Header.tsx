@@ -1,13 +1,14 @@
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
-const pageNames: Record<string, string> = {
-  '/': 'Dashboard',
-  '/editor': 'Editor',
-  '/templates': 'Templates',
-  '/batch': 'Batch Processing',
-  '/history': 'History',
-  '/settings': 'Settings',
+const pageKeys: Record<string, string> = {
+  '/': 'nav.dashboard',
+  '/editor': 'nav.editor',
+  '/templates': 'nav.templates',
+  '/batch': 'nav.batch',
+  '/history': 'nav.history',
+  '/settings': 'nav.settings',
 };
 
 interface HeaderProps {
@@ -15,9 +16,10 @@ interface HeaderProps {
 }
 
 export function Header({ isConnected }: HeaderProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const basePath = '/' + (location.pathname.split('/')[1] || '');
-  const pageName = pageNames[basePath] || 'ClipFlow';
+  const pageName = t(pageKeys[basePath] || 'app.name');
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border px-6">
@@ -30,7 +32,7 @@ export function Header({ isConnected }: HeaderProps) {
               isConnected ? 'bg-emerald-500' : 'bg-red-500',
             )}
           />
-          {isConnected ? 'Connected' : 'Disconnected'}
+          {isConnected ? t('connection.connected') : t('connection.disconnected')}
         </div>
       </div>
     </header>
