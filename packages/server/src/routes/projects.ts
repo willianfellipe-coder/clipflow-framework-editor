@@ -72,10 +72,29 @@ export async function projectRoutes(app: FastifyInstance) {
 
     const now = new Date();
 
-    // Update project with template reference
+    // Build project settings from template config
+    const templateSettings = {
+      captionStyleId: template.defaultCaptionStyleId || null,
+      captionAnimation: 'word-highlight',
+      hookConfig: template.hookConfig ? JSON.parse(template.hookConfig) : null,
+      ctaConfig: template.ctaConfig ? JSON.parse(template.ctaConfig) : null,
+      colorPalette: template.colorPalette ? JSON.parse(template.colorPalette) : [],
+      layoutConfig: template.layoutConfig ? JSON.parse(template.layoutConfig) : null,
+      musicConfig: template.musicConfig ? JSON.parse(template.musicConfig) : null,
+    };
+
+    // Resolve caption animation from linked style
+    if (template.defaultCaptionStyleId) {
+      const { captionStyles: captionStylesTable } = await import('../db/schema.js');
+      const style = db.select().from(captionStylesTable).where(eq(captionStylesTable.id, template.defaultCaptionStyleId)).get();
+      if (style) templateSettings.captionAnimation = style.animation;
+    }
+
+    // Update project with template reference + full settings
     db.update(projects).set({
       templateId: template.id,
       nicheId: template.niche,
+      settings: JSON.stringify(templateSettings),
       updatedAt: now,
     }).where(eq(projects.id, project.id)).run();
 
@@ -88,10 +107,14 @@ export async function projectRoutes(app: FastifyInstance) {
       const defaultTransition = transitions[0] || 'cut';
 
       for (const scene of projectScenes) {
+        // Apply effects and transitions based on scene type
+        const sceneTransitionIn = scene.type === 'hook' ? 'cut' : defaultTransition;
+        const sceneTransitionOut = scene.type === 'cta' ? 'fade' : defaultTransition;
+
         db.update(scenes).set({
           effects,
-          transitionIn: defaultTransition,
-          transitionOut: defaultTransition,
+          transitionIn: sceneTransitionIn,
+          transitionOut: sceneTransitionOut,
         }).where(eq(scenes.id, scene.id)).run();
       }
     }

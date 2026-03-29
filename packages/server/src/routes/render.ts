@@ -200,6 +200,67 @@ async function processRender(
       end: w.end,
     }));
 
+    // Resolve template config for composition props
+    let captionStyle = {
+      fontFamily: 'Plus Jakarta Sans',
+      fontSize: 48,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      highlightColor: '#FFD700',
+      strokeColor: '#000000',
+      strokeWidth: 4,
+      position: 'bottom',
+      maxWordsPerLine: 4,
+    };
+    let captionAnimation = 'word-highlight';
+    let ctaConfig = undefined as { text: string; subtext?: string; duration: number } | undefined;
+    let showProgressBar = format !== 'tiktok_9x16';
+
+    // Load template config if project has one
+    if (project.templateId) {
+      const { templates: templatesTable, captionStyles: captionStylesTable } = await import('../db/schema.js');
+      const template = db.select().from(templatesTable).where(eq(templatesTable.id, project.templateId)).get();
+
+      if (template) {
+        // Resolve caption style from template
+        if (template.defaultCaptionStyleId) {
+          const style = db.select().from(captionStylesTable).where(eq(captionStylesTable.id, template.defaultCaptionStyleId)).get();
+          if (style) {
+            captionStyle = {
+              fontFamily: style.fontFamily,
+              fontSize: style.fontSize,
+              fontWeight: style.fontWeight,
+              color: style.color,
+              highlightColor: style.highlightColor,
+              strokeColor: style.strokeColor,
+              strokeWidth: style.strokeWidth,
+              position: style.position,
+              maxWordsPerLine: style.maxWordsPerLine,
+            };
+            captionAnimation = style.animation;
+          }
+        }
+
+        // Resolve CTA from template
+        if (template.ctaConfig) {
+          const cta = JSON.parse(template.ctaConfig);
+          if (cta.enabled) {
+            ctaConfig = {
+              text: cta.text || 'Follow for more!',
+              subtext: cta.subtext,
+              duration: cta.durationSeconds || 3,
+            };
+          }
+        }
+
+        // Layout config
+        if (template.layoutConfig) {
+          const layout = JSON.parse(template.layoutConfig);
+          if (layout.showProgressBar !== undefined) showProgressBar = layout.showProgressBar;
+        }
+      }
+    }
+
     const compositionProps = {
       videoSrc: `/static/uploads/${projectId}/original.mp4`,
       scenes: projectScenes.map((s) => ({
@@ -212,19 +273,10 @@ async function processRender(
         zoomConfig: s.zoomConfig ? JSON.parse(s.zoomConfig) : null,
       })),
       captions,
-      captionStyle: {
-        fontFamily: 'Inter',
-        fontSize: 48,
-        fontWeight: '800',
-        color: '#FFFFFF',
-        highlightColor: '#FFD700',
-        strokeColor: '#000000',
-        strokeWidth: 4,
-        position: 'bottom',
-        maxWordsPerLine: 4,
-      },
-      captionAnimation: 'word-highlight',
-      showProgressBar: format !== 'tiktok_9x16',
+      captionStyle,
+      captionAnimation,
+      showProgressBar,
+      ...(ctaConfig ? { cta: ctaConfig } : {}),
     };
 
     // Store composition props
