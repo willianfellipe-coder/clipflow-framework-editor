@@ -76,4 +76,10 @@ export async function settingsRoutes(app: FastifyInstance) {
   app.get('/api/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() };
   });
+
+  // Server restart (for dev — tsx watch will auto-restart)
+  app.post('/api/server/restart', async (_request, reply) => {
+    reply.send({ message: 'Server restarting...' });
+    setTimeout(() => process.exit(0), 500); // tsx watch auto-restarts
+  });
 }
