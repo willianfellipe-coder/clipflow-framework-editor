@@ -63,37 +63,45 @@ class AIProvider {
   }
 
   /**
-   * Detect which AI mode is available.
+   * Detect which AI mode to use for analysis.
+   * Priority: real MCP env vars > API key > manual mcp_connected toggle > none
    */
   getMode(): AIMode {
-    // Check if running inside Claude Code MCP context
-    if (process.env.CLAUDE_CODE === 'true' || process.env.MCP_MODE === 'true' || this.isMcpConnected()) {
+    // Real Claude Code process (env vars set by the runtime)
+    if (process.env.CLAUDE_CODE === 'true' || process.env.MCP_MODE === 'true') {
       return 'claude-code';
     }
-
-    // Check if API key is available
+    // API key available → use it directly (takes priority over manual toggle)
     if (config.anthropicApiKey) {
       return 'claude-api';
     }
-
+    // Manual UI toggle — claude-code mode but analysis will require API key
+    if (this.isMcpConnected()) {
+      return 'claude-code';
+    }
     return 'none';
   }
 
   /**
    * Get human-readable status of AI availability.
+   * mcpConnected is reported separately from analysis availability.
    */
-  getStatus(): { mode: AIMode; available: boolean; message: string } {
+  getStatus(): { mode: AIMode; available: boolean; mcpConnected: boolean; message: string } {
     const mode = this.getMode();
+    const mcpConnected = this.isMcpConnected()
+      || process.env.CLAUDE_CODE === 'true'
+      || process.env.MCP_MODE === 'true';
 
     switch (mode) {
       case 'claude-api':
-        return { mode, available: true, message: 'Claude API connected (Anthropic SDK)' };
+        return { mode, available: true, mcpConnected, message: 'Claude API connected (Anthropic SDK)' };
       case 'claude-code':
-        return { mode, available: true, message: 'Claude Code connected (MCP integration)' };
+        return { mode, available: true, mcpConnected, message: 'Claude Code connected (MCP integration)' };
       case 'none':
         return {
           mode,
           available: false,
+          mcpConnected,
           message: 'No AI available. Set ANTHROPIC_API_KEY in .env or use ClipFlow from Claude Code.',
         };
     }
@@ -115,15 +123,21 @@ class AIProvider {
     }
 
     if (mode === 'claude-code') {
-      // In Claude Code MCP mode, the analysis is done by the MCP tool
-      // This path shouldn't normally be reached — Claude Code calls save_analysis directly
-      return claudeService.analyzeForEdit(transcription, template, niche, userInstructions);
+      // Real MCP process (env vars set) — API key may still be available for browser-triggered analysis
+      if (config.anthropicApiKey) {
+        return claudeService.analyzeForEdit(transcription, template, niche, userInstructions);
+      }
+      throw new Error(
+        'Análise via navegador requer ANTHROPIC_API_KEY no .env.\n' +
+        'Configure a chave no arquivo .env e reinicie o servidor.\n\n' +
+        'Ou use o Claude Code CLI com o MCP tool:\n' +
+        'clipflow_analyze_edit (project_id: <id>)',
+      );
     }
 
     throw new Error(
-      'No AI provider available. Options:\n' +
-      '1. Set ANTHROPIC_API_KEY in your .env file\n' +
-      '2. Use ClipFlow from Claude Code (install as MCP tool: claude mcp add clipflow -- npx @clip/mcp)',
+      'Nenhum provedor de IA disponível.\n' +
+      'Configure ANTHROPIC_API_KEY no .env ou conecte o Claude Code nas Configurações.',
     );
   }
 
@@ -142,13 +156,20 @@ class AIProvider {
     }
 
     if (mode === 'claude-code') {
-      return clipGenService.analyzeForClips(transcription, analysisConfig, videoMeta);
+      if (config.anthropicApiKey) {
+        return clipGenService.analyzeForClips(transcription, analysisConfig, videoMeta);
+      }
+      throw new Error(
+        'Análise via navegador requer ANTHROPIC_API_KEY no .env.\n' +
+        'Configure a chave no arquivo .env e reinicie o servidor.\n\n' +
+        'Ou use o Claude Code CLI com o MCP tool:\n' +
+        'clipflow_analyze_clips (project_id: <id>)',
+      );
     }
 
     throw new Error(
-      'No AI provider available. Options:\n' +
-      '1. Set ANTHROPIC_API_KEY in your .env file\n' +
-      '2. Use ClipFlow from Claude Code (install as MCP tool)',
+      'Nenhum provedor de IA disponível.\n' +
+      'Configure ANTHROPIC_API_KEY no .env ou conecte o Claude Code nas Configurações.',
     );
   }
 }

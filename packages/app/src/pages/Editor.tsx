@@ -39,6 +39,7 @@ export function Editor() {
   const [hasTranscription, setHasTranscription] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStage, setAnalysisStage] = useState('');
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<{ contentScore?: number; hookAnalysis?: { score: number }; ctaAnalysis?: { score: number }; summary?: string } | null>(null);
   const [previewFormat, setPreviewFormat] = useState('reel_9x16');
   const [inspectorTab, setInspectorTab] = useState<'scene' | 'caption'>('scene');
@@ -87,7 +88,7 @@ export function Editor() {
 
     const unsub3 = subscribe('analysis:error', (data: unknown) => {
       const { projectId: pid, error } = data as { projectId: string; error: string };
-      if (pid === projectId) { setIsAnalyzing(false); alert(`Analysis failed: ${error}`); }
+      if (pid === projectId) { setIsAnalyzing(false); setAnalysisError(error); }
     });
 
     return () => { unsub1(); unsub2(); unsub3(); };
@@ -97,8 +98,9 @@ export function Editor() {
     if (!projectId) return;
     setIsAnalyzing(true);
     setAnalysisStage('Starting analysis...');
+    setAnalysisError(null);
     try { await api.post(`/projects/${projectId}/analyze`, {}); }
-    catch (err) { setIsAnalyzing(false); alert(err instanceof Error ? err.message : 'Failed'); }
+    catch (err) { setIsAnalyzing(false); setAnalysisError(err instanceof Error ? err.message : 'Analysis failed'); }
   }, [projectId]);
 
   const handleSelectScene = useCallback((id: string) => {
@@ -182,16 +184,27 @@ export function Editor() {
       {/* Main area */}
       <div className="flex flex-1 gap-2 overflow-hidden">
         {/* Scene Panel */}
-        <div className="w-48 shrink-0 rounded-lg border border-border bg-card overflow-hidden">
-          <ScenePanel
-            scenes={scenes}
-            selectedSceneId={selectedSceneId}
-            onSelectScene={handleSelectScene}
-            onAnalyze={handleAnalyze}
-            isAnalyzing={isAnalyzing}
-            analysisStage={analysisStage}
-            hasTranscription={hasTranscription}
-          />
+        <div className="w-48 shrink-0 flex flex-col gap-2">
+          <div className="rounded-lg border border-border bg-card overflow-hidden flex-1">
+            <ScenePanel
+              scenes={scenes}
+              selectedSceneId={selectedSceneId}
+              onSelectScene={handleSelectScene}
+              onAnalyze={handleAnalyze}
+              isAnalyzing={isAnalyzing}
+              analysisStage={analysisStage}
+              hasTranscription={hasTranscription}
+            />
+          </div>
+          {analysisError && (
+            <div className="rounded-lg border border-red-800/60 bg-red-950/40 p-2.5 text-xs text-red-300">
+              <div className="flex items-start justify-between gap-1 mb-1">
+                <span className="font-medium text-red-200">Análise falhou</span>
+                <button onClick={() => setAnalysisError(null)} className="text-red-400 hover:text-red-200 leading-none shrink-0">×</button>
+              </div>
+              <p className="whitespace-pre-line leading-relaxed">{analysisError}</p>
+            </div>
+          )}
         </div>
 
         {/* Preview */}

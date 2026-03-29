@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 interface AIStatus {
   mode: string;
   available: boolean;
+  mcpConnected: boolean;
   message: string;
 }
 
@@ -32,7 +33,7 @@ export function Settings() {
     if (!systemStatus) return;
     setTogglingAi(true);
     try {
-      const connected = !systemStatus.ai.available;
+      const connected = !systemStatus.ai.mcpConnected;
       const newStatus = await api.post<AIStatus>('/settings/mcp-connected', { connected });
       setSystemStatus((prev) => prev ? { ...prev, ai: newStatus } : prev);
     } catch { /* ignore */ }
@@ -142,7 +143,7 @@ export function Settings() {
               </div>
               <div className="flex items-center justify-between pt-1">
                 <div className="flex items-center gap-2 text-sm">
-                  <div className={`h-2 w-2 rounded-full ${systemStatus.ai.available ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                  <div className={`h-2 w-2 rounded-full ${systemStatus.ai.mcpConnected ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
                   <span className="text-muted-foreground">AI: {systemStatus.ai.message}</span>
                 </div>
                 <button
@@ -150,7 +151,7 @@ export function Settings() {
                   disabled={togglingAi}
                   className="cursor-pointer inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/80 disabled:opacity-50 border border-border"
                 >
-                  {systemStatus.ai.available ? (
+                  {systemStatus.ai.mcpConnected ? (
                     <><Unplug className="h-3.5 w-3.5" /> Desconectar</>
                   ) : (
                     <><Plug className="h-3.5 w-3.5" /> Conectar Claude Code</>
