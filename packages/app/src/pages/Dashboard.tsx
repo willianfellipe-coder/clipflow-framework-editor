@@ -74,14 +74,24 @@ export function Dashboard() {
 
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(JSON.parse(xhr.responseText));
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch {
+              reject(new Error('Invalid response from server'));
+            }
           } else {
-            const err = JSON.parse(xhr.responseText);
-            reject(new Error(err.message || `Upload failed: ${xhr.status}`));
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err.message || `Upload failed (HTTP ${xhr.status})`));
+            } catch {
+              reject(new Error(`Upload failed (HTTP ${xhr.status}): ${xhr.statusText || 'Server error'}`));
+            }
           }
         };
 
-        xhr.onerror = () => reject(new Error('Upload failed'));
+        xhr.onerror = () => reject(new Error('Upload failed — check your connection and try again'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out — the file may be too large'));
+        xhr.timeout = 600000; // 10 minutes for large files
         xhr.send(formData);
       });
 

@@ -24,7 +24,10 @@ async function start() {
   // Initialize database tables
   initializeDatabase();
 
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: true,
+    bodyLimit: 524288000, // 500MB for video uploads
+  });
 
   // Error handler
   registerErrorHandler(app);
