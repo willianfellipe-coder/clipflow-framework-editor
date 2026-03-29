@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 const pageKeys: Record<string, string> = {
   '/': 'nav.dashboard',
   '/editor': 'nav.editor',
+  '/clipgen': 'nav.clipgen',
   '/templates': 'nav.templates',
   '/batch': 'nav.batch',
   '/history': 'nav.history',

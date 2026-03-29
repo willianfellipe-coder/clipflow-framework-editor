@@ -187,3 +187,79 @@ export const settings = sqliteTable('settings', {
   value: text('value').notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
+
+// -- ClipGen: Clip Analyses --
+export const clipAnalyses = sqliteTable('clip_analyses', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id),
+  transcriptionId: text('transcription_id').references(() => transcriptions.id),
+  targetDuration: integer('target_duration').notNull().default(30),
+  numberOfClips: integer('number_of_clips').notNull().default(5),
+  targetPlatform: text('target_platform').notNull().default('tiktok'),
+  niche: text('niche'),
+  tone: text('tone').notNull().default('energetic'),
+  customInstructions: text('custom_instructions'),
+  rawResponse: text('raw_response'),
+  clipsGenerated: integer('clips_generated').notNull().default(0),
+  modelUsed: text('model_used'),
+  tokensUsed: integer('tokens_used'),
+  status: text('status', {
+    enum: ['pending', 'processing', 'done', 'error'],
+  }).notNull().default('pending'),
+  errorMessage: text('error_message'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+});
+
+// -- ClipGen: Clips --
+export const clips = sqliteTable('clips', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id),
+  analysisId: text('analysis_id').references(() => clipAnalyses.id),
+  startTime: real('start_time').notNull(),
+  endTime: real('end_time').notNull(),
+  title: text('title').notNull().default('Untitled Clip'),
+  hookSentence: text('hook_sentence'),
+  hookScore: integer('hook_score').notNull().default(0),
+  emotionalTone: text('emotional_tone').notNull().default('neutral'),
+  suggestedHashtags: text('suggested_hashtags'),
+  aiReason: text('ai_reason'),
+  captionStyleId: text('caption_style_id').references(() => captionStyles.id),
+  captionAnimation: text('caption_animation').notNull().default('word-highlight'),
+  aspectRatio: text('aspect_ratio').notNull().default('9:16'),
+  zoomConfig: text('zoom_config'),
+  ctaConfig: text('cta_config'),
+  showProgressBar: integer('show_progress_bar', { mode: 'boolean' }).notNull().default(true),
+  status: text('status', {
+    enum: ['suggested', 'selected', 'editing', 'queued', 'rendering', 'done', 'error', 'rejected'],
+  }).notNull().default('suggested'),
+  orderIndex: integer('order_index').notNull().default(0),
+  quality: text('quality').notNull().default('standard'),
+  outputFormat: text('output_format').notNull().default('mp4'),
+  targetPlatform: text('target_platform').notNull().default('tiktok'),
+  renderId: text('render_id').references(() => renders.id),
+  outputPath: text('output_path'),
+  thumbnailPath: text('thumbnail_path'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+// -- ClipGen: Presets --
+export const clipPresets = sqliteTable('clip_presets', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  targetDuration: integer('target_duration').notNull().default(30),
+  numberOfClips: integer('number_of_clips').notNull().default(5),
+  targetPlatform: text('target_platform').notNull().default('tiktok'),
+  niche: text('niche'),
+  tone: text('tone').notNull().default('energetic'),
+  customInstructions: text('custom_instructions'),
+  captionStyleId: text('caption_style_id'),
+  captionAnimation: text('caption_animation').notNull().default('word-highlight'),
+  zoomConfig: text('zoom_config'),
+  ctaConfig: text('cta_config'),
+  isBuiltIn: integer('is_built_in', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});

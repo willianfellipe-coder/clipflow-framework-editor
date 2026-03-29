@@ -8,6 +8,11 @@ export type { Template, CreateTemplateInput } from './types/template.js';
 export type { ExportFormat, RenderStatus, RenderResult, RenderProgress, QualityPreset } from './types/export.js';
 export type { BatchJob, BatchItem, BatchStatus, BatchItemStatus } from './types/batch.js';
 export type { WSEvent, WSEventName, WSEventData } from './types/websocket.js';
+export type {
+  Clip, ClipStatus, ClipAnalysis, ClipAnalysisRequest, ClipAnalysisResult,
+  SuggestedClip, ClipPreset, ClipZoomConfig, ClipCtaConfig,
+  EmotionalTone, TargetPlatform, ClipQuality,
+} from './types/clip.js';
 
 // Schemas
 export { createProjectSchema, updateProjectSchema } from './schemas/project.schema.js';

@@ -16,6 +16,7 @@ import { sceneRoutes } from './routes/scenes.js';
 import { captionRoutes } from './routes/captions.js';
 import { renderRoutes } from './routes/render.js';
 import { batchRoutes } from './routes/batch.js';
+import { clipRoutes } from './routes/clips.js';
 import { initializeDatabase } from './db/index.js';
 import { seed } from './db/seed.js';
 
@@ -45,6 +46,7 @@ async function start() {
   await app.register(captionRoutes);
   await app.register(renderRoutes);
   await app.register(batchRoutes);
+  await app.register(clipRoutes);
 
   // Seed database
   await seed();

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Film,
+  Sparkles,
   Palette,
   Layers,
   Clock,
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 const linkKeys = [
   { to: '/', icon: LayoutDashboard, key: 'nav.dashboard' },
   { to: '/editor', icon: Film, key: 'nav.editor' },
+  { to: '/clipgen', icon: Sparkles, key: 'nav.clipgen' },
   { to: '/templates', icon: Palette, key: 'nav.templates' },
   { to: '/batch', icon: Layers, key: 'nav.batch' },
   { to: '/history', icon: Clock, key: 'nav.history' },

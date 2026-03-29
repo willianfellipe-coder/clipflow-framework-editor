@@ -7,6 +7,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "editor": "Editor",
+    "clipgen": "ClipGen",
     "templates": "Templates",
     "batch": "Batch",
     "history": "History",

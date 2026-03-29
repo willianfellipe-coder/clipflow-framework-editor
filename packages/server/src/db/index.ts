@@ -173,7 +173,77 @@ export function initializeDatabase() {
       updated_at INTEGER NOT NULL
     );
 
-    -- DAT-006: Indexes for common queries
+    -- ClipGen tables
+    CREATE TABLE IF NOT EXISTS clip_analyses (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id),
+      transcription_id TEXT REFERENCES transcriptions(id),
+      target_duration INTEGER NOT NULL DEFAULT 30,
+      number_of_clips INTEGER NOT NULL DEFAULT 5,
+      target_platform TEXT NOT NULL DEFAULT 'tiktok',
+      niche TEXT,
+      tone TEXT NOT NULL DEFAULT 'energetic',
+      custom_instructions TEXT,
+      raw_response TEXT,
+      clips_generated INTEGER NOT NULL DEFAULT 0,
+      model_used TEXT,
+      tokens_used INTEGER,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error_message TEXT,
+      created_at INTEGER NOT NULL,
+      completed_at INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS clips (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id),
+      analysis_id TEXT REFERENCES clip_analyses(id),
+      start_time REAL NOT NULL,
+      end_time REAL NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Untitled Clip',
+      hook_sentence TEXT,
+      hook_score INTEGER NOT NULL DEFAULT 0,
+      emotional_tone TEXT NOT NULL DEFAULT 'neutral',
+      suggested_hashtags TEXT,
+      ai_reason TEXT,
+      caption_style_id TEXT REFERENCES caption_styles(id),
+      caption_animation TEXT NOT NULL DEFAULT 'word-highlight',
+      aspect_ratio TEXT NOT NULL DEFAULT '9:16',
+      zoom_config TEXT,
+      cta_config TEXT,
+      show_progress_bar INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'suggested',
+      order_index INTEGER NOT NULL DEFAULT 0,
+      quality TEXT NOT NULL DEFAULT 'standard',
+      output_format TEXT NOT NULL DEFAULT 'mp4',
+      target_platform TEXT NOT NULL DEFAULT 'tiktok',
+      render_id TEXT REFERENCES renders(id),
+      output_path TEXT,
+      thumbnail_path TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clip_presets (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      target_duration INTEGER NOT NULL DEFAULT 30,
+      number_of_clips INTEGER NOT NULL DEFAULT 5,
+      target_platform TEXT NOT NULL DEFAULT 'tiktok',
+      niche TEXT,
+      tone TEXT NOT NULL DEFAULT 'energetic',
+      custom_instructions TEXT,
+      caption_style_id TEXT,
+      caption_animation TEXT NOT NULL DEFAULT 'word-highlight',
+      zoom_config TEXT,
+      cta_config TEXT,
+      is_built_in INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- Indexes
     CREATE INDEX IF NOT EXISTS idx_transcriptions_project ON transcriptions(project_id);
     CREATE INDEX IF NOT EXISTS idx_analyses_project ON analyses(project_id);
     CREATE INDEX IF NOT EXISTS idx_scenes_project ON scenes(project_id);
@@ -182,5 +252,10 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_batch_items_job ON batch_items(batch_job_id);
     CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
     CREATE INDEX IF NOT EXISTS idx_projects_created ON projects(created_at);
+    CREATE INDEX IF NOT EXISTS idx_clips_project ON clips(project_id);
+    CREATE INDEX IF NOT EXISTS idx_clips_status ON clips(status);
+    CREATE INDEX IF NOT EXISTS idx_clips_analysis ON clips(analysis_id);
+    CREATE INDEX IF NOT EXISTS idx_clips_hook_score ON clips(hook_score);
+    CREATE INDEX IF NOT EXISTS idx_clip_analyses_project ON clip_analyses(project_id);
   `);
 }
