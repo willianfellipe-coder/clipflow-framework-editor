@@ -76,6 +76,23 @@ export class FFmpegService {
     ]);
     return outputPath;
   }
+  /**
+   * Transcode video to H.264 MP4 (browser-compatible).
+   * Needed for HEVC/MOV files from iPhones that Chrome can't play.
+   */
+  async transcodeToH264(inputPath: string, outputPath: string): Promise<string> {
+    await execFileAsync(ffmpeg, [
+      '-i', inputPath,
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '23',
+      '-c:a', 'aac',
+      '-movflags', '+faststart',
+      '-y',
+      outputPath,
+    ]);
+    return outputPath;
+  }
 }
 
 export const ffmpegService = new FFmpegService();

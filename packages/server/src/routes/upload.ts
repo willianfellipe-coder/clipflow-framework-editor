@@ -59,10 +59,23 @@ export async function uploadRoutes(app: FastifyInstance) {
       throw new AppError(422, `Could not read video file: ${err}`, 'PROBE_FAILED');
     }
 
+    // Transcode to H.264 if needed (HEVC/iPhone MOV not playable in browser)
+    let finalVideoPath = videoPath;
+    if (meta.codec !== 'h264') {
+      const h264Path = path.join(uploadDir, 'original.mp4');
+      try {
+        await ffmpegService.transcodeToH264(videoPath, h264Path);
+        finalVideoPath = h264Path;
+        meta = await ffmpegService.probe(h264Path);
+      } catch {
+        // Transcoding failed — keep original and hope for the best
+      }
+    }
+
     // Generate thumbnail at 25% of duration
     const thumbnailPath = path.join(uploadDir, 'thumbnail.jpg');
     try {
-      await ffmpegService.thumbnail(videoPath, meta.duration * 0.25, thumbnailPath);
+      await ffmpegService.thumbnail(finalVideoPath, meta.duration * 0.25, thumbnailPath);
     } catch {
       // Thumbnail is non-critical, continue without it
     }
@@ -72,7 +85,7 @@ export async function uploadRoutes(app: FastifyInstance) {
     db.insert(projects).values({
       id: projectId,
       name: data.filename.replace(fileExt, ''),
-      sourceVideoPath: videoPath,
+      sourceVideoPath: finalVideoPath,
       sourceVideoMeta: JSON.stringify(meta),
       thumbnailPath,
       status: 'draft',
