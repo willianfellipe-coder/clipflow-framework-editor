@@ -11,7 +11,7 @@ interface TemplateStore {
   setSelectedTemplate: (template: Template | null) => void;
   setNicheFilter: (niche: string) => void;
   filteredTemplates: () => Template[];
-  createTemplate: (data: Record<string, unknown>) => Promise<Template>;
+  createTemplate: (data: any) => Promise<Template>;
   deleteTemplate: (id: string) => Promise<void>;
   applyTemplate: (projectId: string, templateId: string) => Promise<Project>;
 }

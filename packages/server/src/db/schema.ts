@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 // -- Projects --
-export const projects = sqliteTable('projects', {
+export const projects: any = sqliteTable('projects', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
@@ -19,7 +19,7 @@ export const projects = sqliteTable('projects', {
 });
 
 // -- Transcriptions --
-export const transcriptions = sqliteTable('transcriptions', {
+export const transcriptions: any = sqliteTable('transcriptions', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id),
   model: text('model').notNull().default('large-v3'),
@@ -34,7 +34,7 @@ export const transcriptions = sqliteTable('transcriptions', {
 });
 
 // -- AI Analyses --
-export const analyses = sqliteTable('analyses', {
+export const analyses: any = sqliteTable('analyses', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id),
   transcriptionId: text('transcription_id').notNull().references(() => transcriptions.id),
@@ -52,7 +52,7 @@ export const analyses = sqliteTable('analyses', {
 });
 
 // -- Scenes --
-export const scenes = sqliteTable('scenes', {
+export const scenes: any = sqliteTable('scenes', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id),
   analysisId: text('analysis_id').references(() => analyses.id),
@@ -73,7 +73,7 @@ export const scenes = sqliteTable('scenes', {
 });
 
 // -- Caption Styles --
-export const captionStyles = sqliteTable('caption_styles', {
+export const captionStyles: any = sqliteTable('caption_styles', {
   id: text('id').primaryKey(),
   projectId: text('project_id').references(() => projects.id),
   name: text('name').notNull(),
@@ -100,7 +100,7 @@ export const captionStyles = sqliteTable('caption_styles', {
 });
 
 // -- Templates --
-export const templates = sqliteTable('templates', {
+export const templates: any = sqliteTable('templates', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),

@@ -82,7 +82,7 @@ export function VideoPreview({
         {videoSrc ? (
           <Player
             ref={playerRef}
-            component={ReelComposition}
+            component={ReelComposition as React.ComponentType<any>}
             inputProps={inputProps}
             durationInFrames={durationInFrames}
             compositionWidth={dim.width}

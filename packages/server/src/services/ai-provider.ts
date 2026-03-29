@@ -35,12 +35,21 @@ interface VideoMetadata {
 }
 
 class AIProvider {
+  private mcpConnected = false;
+
+  /**
+   * Set MCP connection state (called when MCP server notifies us).
+   */
+  setMcpConnected(connected: boolean) {
+    this.mcpConnected = connected;
+  }
+
   /**
    * Detect which AI mode is available.
    */
   getMode(): AIMode {
     // Check if running inside Claude Code MCP context
-    if (process.env.CLAUDE_CODE === 'true' || process.env.MCP_MODE === 'true') {
+    if (process.env.CLAUDE_CODE === 'true' || process.env.MCP_MODE === 'true' || this.mcpConnected) {
       return 'claude-code';
     }
 

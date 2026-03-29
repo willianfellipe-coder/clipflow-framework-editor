@@ -176,7 +176,7 @@ async function processAnalysis(
   // Call Claude
   const result = await aiProvider.analyzeForEdit(
     { segments, wordTimestamps, language: transcription.language },
-    template,
+    template as any,
     niche,
     instructions,
   );

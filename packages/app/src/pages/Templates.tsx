@@ -5,7 +5,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { NicheSelector } from '@/components/template/NicheSelector';
 import { TemplateCard } from '@/components/template/TemplateCard';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
-import { TemplateCreateForm } from '@/components/template/TemplateCreateForm';
+import { TemplateCreateForm, type TemplateFormData } from '@/components/template/TemplateCreateForm';
 import type { Template } from '@clip/shared';
 
 export function Templates() {
@@ -26,8 +26,8 @@ export function Templates() {
 
   const templates = filteredTemplates();
 
-  const handleCreate = async (data: Record<string, unknown>) => {
-    await createTemplate(data);
+  const handleCreate = (data: TemplateFormData) => {
+    createTemplate(data);
     setShowCreateForm(false);
   };
 

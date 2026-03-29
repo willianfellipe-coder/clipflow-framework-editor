@@ -200,7 +200,7 @@ export function Editor() {
             videoSrc={project ? `/static/uploads/${project.id}/original.mp4` : ''}
             scenes={scenes.map((s) => ({
               id: s.id, startTime: s.startTime, endTime: s.endTime, type: s.type,
-              transitionIn: s.transitionIn, transitionOut: s.transitionOut,
+              transitionIn: s.transitionIn ?? undefined, transitionOut: s.transitionOut ?? undefined,
               zoomConfig: s.zoomConfig ? (typeof s.zoomConfig === 'string' ? JSON.parse(s.zoomConfig) : s.zoomConfig) : null,
             }))}
             captions={captionWords}
@@ -210,7 +210,7 @@ export function Editor() {
               strokeColor: '#000000', strokeWidth: 4,
               position: 'bottom', maxWordsPerLine: 4,
             }}
-            captionAnimation={captionAnimation}
+            captionAnimation={captionAnimation as any}
             durationInSeconds={meta?.duration || 30}
             format={previewFormat}
             onFormatChange={setPreviewFormat}
@@ -269,7 +269,7 @@ export function Editor() {
               <CaptionEditor
                 words={words}
                 selectedWordIndex={selectedWordIndex}
-                captionAnimation={captionAnimation}
+                captionAnimation={captionAnimation as any}
                 onUpdateWord={updateWord}
                 onUpdateTiming={updateWordTiming}
                 onAnimationChange={setCaptionAnimation}

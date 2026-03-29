@@ -1,6 +1,7 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import ffmpegPath from 'ffmpeg-static';
+// @ts-ignore
 import ffprobePath from 'ffprobe-static';
 import type { VideoMeta } from '@clip/shared';
 
@@ -80,18 +81,44 @@ export class FFmpegService {
    * Transcode video to H.264 MP4 (browser-compatible).
    * Needed for HEVC/MOV files from iPhones that Chrome can't play.
    */
-  async transcodeToH264(inputPath: string, outputPath: string): Promise<string> {
-    await execFileAsync(ffmpeg, [
-      '-i', inputPath,
-      '-c:v', 'libx264',
-      '-preset', 'fast',
-      '-crf', '23',
-      '-c:a', 'aac',
-      '-movflags', '+faststart',
-      '-y',
-      outputPath,
-    ]);
-    return outputPath;
+  async transcodeToH264(
+    inputPath: string,
+    outputPath: string,
+    onProgress?: (percent: number) => void,
+  ): Promise<string> {
+    // Get total duration for percentage calculation
+    const meta = await this.probe(inputPath);
+    const totalDuration = meta.duration;
+
+    return new Promise((resolve, reject) => {
+      const child = spawn(ffmpeg, [
+        '-i', inputPath,
+        '-c:v', 'libx264',
+        '-preset', 'fast',
+        '-crf', '23',
+        '-c:a', 'aac',
+        '-movflags', '+faststart',
+        '-progress', 'pipe:1',
+        '-y',
+        outputPath,
+      ]);
+
+      child.stdout?.on('data', (data: Buffer) => {
+        if (!onProgress || totalDuration <= 0) return;
+        const match = data.toString().match(/out_time_us=(\d+)/);
+        if (match) {
+          const currentSec = parseInt(match[1], 10) / 1_000_000;
+          const percent = Math.min(Math.round((currentSec / totalDuration) * 100), 99);
+          onProgress(percent);
+        }
+      });
+
+      child.on('error', reject);
+      child.on('close', (code) => {
+        if (code !== 0) reject(new Error(`FFmpeg transcode exited with code ${code}`));
+        else resolve(outputPath);
+      });
+    });
   }
 }
 

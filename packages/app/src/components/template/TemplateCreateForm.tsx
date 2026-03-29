@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { NICHES } from '@clip/shared';
 
-interface TemplateFormData {
+export interface TemplateFormData {
   name: string;
   description: string;
   niche: string;

@@ -9,6 +9,7 @@ import { projects } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { PATHS } from '../config.js';
 import { ffmpegService } from '../services/ffmpeg.service.js';
+import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
@@ -64,7 +65,11 @@ export async function uploadRoutes(app: FastifyInstance) {
     if (meta.codec !== 'h264') {
       const h264Path = path.join(uploadDir, 'original.mp4');
       try {
-        await ffmpegService.transcodeToH264(videoPath, h264Path);
+        broadcast('upload:transcoding', { projectId, percent: 0, message: 'Convertendo vídeo...' });
+        await ffmpegService.transcodeToH264(videoPath, h264Path, (percent) => {
+          broadcast('upload:transcoding', { projectId, percent, message: 'Convertendo vídeo...' });
+        });
+        broadcast('upload:transcoding', { projectId, percent: 100, message: 'Conversão concluída' });
         finalVideoPath = h264Path;
         meta = await ffmpegService.probe(h264Path);
       } catch {

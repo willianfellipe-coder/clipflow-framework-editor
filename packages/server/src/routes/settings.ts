@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
+import path from 'path';
 import { db } from '../db/index.js';
 import { settings } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { PATHS } from '../config.js';
 
 export async function settingsRoutes(app: FastifyInstance) {
   // Get all settings
@@ -38,8 +40,7 @@ export async function settingsRoutes(app: FastifyInstance) {
     try { execSync('ffmpeg -version', { stdio: 'ignore' }); ffmpegOk = true; } catch {}
 
     // Check WhisperX in venv first, then system python
-    const { resolve } = await import('path');
-    const venvPy = resolve(process.cwd(), '../../whisper/.venv/bin/python');
+    const venvPy = path.resolve(PATHS.root, 'whisper', '.venv', 'bin', 'python');
     try { execSync(`${venvPy} -c "import whisperx"`, { stdio: 'ignore' }); whisperxOk = true; } catch {
       try { execSync('python3 -c "import whisperx"', { stdio: 'ignore' }); whisperxOk = true; } catch {}
     }
@@ -75,6 +76,13 @@ export async function settingsRoutes(app: FastifyInstance) {
   // GAP-007: Health check for load balancers and monitoring
   app.get('/api/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() };
+  });
+
+  // MCP connection notification (called by MCP server on startup)
+  app.post('/api/settings/mcp-connected', async () => {
+    const { aiProvider } = await import('../services/ai-provider.js');
+    aiProvider.setMcpConnected(true);
+    return { ok: true };
   });
 
   // Server restart (for dev — tsx watch will auto-restart)

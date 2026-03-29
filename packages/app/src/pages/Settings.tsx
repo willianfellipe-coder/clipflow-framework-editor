@@ -25,10 +25,26 @@ export function Settings() {
     setRestarting(true);
     try {
       await api.post('/server/restart');
-      setTimeout(() => { window.location.reload(); }, 2000);
-    } catch {
-      setRestarting(false);
-    }
+    } catch { /* server may already be shutting down */ }
+
+    // Poll health endpoint until server is back, then reload
+    let attempt = 0;
+    const maxAttempts = 20;
+    const interval = 1500;
+
+    const poll = setInterval(async () => {
+      attempt++;
+      try {
+        await api.get('/health');
+        clearInterval(poll);
+        window.location.reload();
+      } catch {
+        if (attempt >= maxAttempts) {
+          clearInterval(poll);
+          setRestarting(false);
+        }
+      }
+    }, interval);
   };
 
   return (

@@ -418,11 +418,21 @@ After generating clips, call **clipflow_save_clips** with project_id="${a.projec
   }
 });
 
+// Notify ClipFlow server that MCP is connected
+async function notifyMcpConnected() {
+  try {
+    await fetch(`${CLIPFLOW_URL}/api/settings/mcp-connected`, { method: 'POST' });
+  } catch {
+    // Server may not be running yet — not critical
+  }
+}
+
 // Start
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('ClipFlow MCP server v2.0 started (Claude Code integration)');
+  notifyMcpConnected();
 }
 
 main().catch(console.error);

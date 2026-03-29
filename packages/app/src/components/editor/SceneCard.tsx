@@ -12,7 +12,7 @@ const typeConfig: Record<string, { color: string; bg: string; icon: typeof Zap }
   hook: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', icon: Zap },
   content: { color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30', icon: MessageSquare },
   transition: { color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30', icon: ArrowRightLeft },
-  broll: { color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30', icon: Film },
+  broll: { color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/30', icon: Film },
   cta: { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30', icon: Megaphone },
   outro: { color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/30', icon: LogOut },
 };

@@ -18,6 +18,7 @@ export function Dashboard() {
   const [uploadState, setUploadState] = useState<
     | { stage: 'idle' }
     | { stage: 'uploading'; fileName: string; percent: number }
+    | { stage: 'transcoding'; fileName: string; percent: number; message: string }
     | { stage: 'done'; project: Project; meta: VideoMeta }
     | { stage: 'transcribing'; project: Project; meta: VideoMeta; progress: { percent: number; currentSegment: string } }
     | { stage: 'transcribed'; project: Project; meta: VideoMeta }
@@ -27,8 +28,19 @@ export function Dashboard() {
     fetchProjects();
   }, [fetchProjects]);
 
-  // Listen for transcription events
+  // Listen for transcoding + transcription events
   useEffect(() => {
+    const unsub0 = subscribe('upload:transcoding', (data: unknown) => {
+      const { percent, message } = data as { projectId: string; percent: number; message: string };
+      setUploadState((prev) => {
+        if (prev.stage === 'uploading' || prev.stage === 'transcoding') {
+          const fileName = prev.stage === 'uploading' ? prev.fileName : prev.fileName;
+          return { stage: 'transcoding', fileName, percent, message };
+        }
+        return prev;
+      });
+    });
+
     const unsub1 = subscribe('transcription:progress', (data: unknown) => {
       const { projectId, percent, currentSegment } = data as { projectId: string; percent: number; currentSegment: string };
       setUploadState((prev) => {
@@ -50,7 +62,7 @@ export function Dashboard() {
       fetchProjects();
     });
 
-    return () => { unsub1(); unsub2(); };
+    return () => { unsub0(); unsub1(); unsub2(); };
   }, [subscribe, fetchProjects]);
 
   const handleFileSelected = useCallback(async (file: File) => {
@@ -145,6 +157,15 @@ export function Dashboard() {
           fileName={uploadState.fileName}
           percent={uploadState.percent}
           stage="uploading"
+        />
+      )}
+
+      {uploadState.stage === 'transcoding' && (
+        <UploadProgress
+          fileName={uploadState.fileName}
+          percent={uploadState.percent}
+          stage="transcoding"
+          message={uploadState.message}
         />
       )}
 
