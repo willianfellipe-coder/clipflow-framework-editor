@@ -63,7 +63,7 @@ export function Sidebar() {
           className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
         >
           <Globe className="h-3.5 w-3.5" />
-          {i18n.language === 'pt-BR' ? 'English' : 'Portugues'}
+          {i18n.language === 'pt-BR' ? 'English' : 'Português'}
         </button>
         <p className="px-3 text-xs text-muted-foreground">{t('app.name')} {t('app.version')}</p>
       </div>

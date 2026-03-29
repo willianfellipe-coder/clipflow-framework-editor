@@ -29,7 +29,7 @@ export const Root: React.FC = () => {
       <Composition
         id="ReelComposition"
         component={Reel}
-        durationInFrames={30 * 30}
+        durationInFrames={30 * 60}
         fps={30}
         width={1080}
         height={1920}
@@ -46,7 +46,7 @@ export const Root: React.FC = () => {
       <Composition
         id="FeedComposition"
         component={Feed}
-        durationInFrames={30 * 30}
+        durationInFrames={30 * 60}
         fps={30}
         width={1080}
         height={1080}
@@ -61,7 +61,7 @@ export const Root: React.FC = () => {
       <Composition
         id="FeedComposition4x5"
         component={Feed}
-        durationInFrames={30 * 30}
+        durationInFrames={30 * 60}
         fps={30}
         width={1080}
         height={1350}
@@ -75,7 +75,7 @@ export const Root: React.FC = () => {
       <Composition
         id="StoryComposition"
         component={Story}
-        durationInFrames={30 * 30}
+        durationInFrames={30 * 60}
         fps={30}
         width={1080}
         height={1920}

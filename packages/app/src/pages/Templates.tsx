@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { useTemplateStore } from '@/stores/templateStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { NicheSelector } from '@/components/template/NicheSelector';
 import { TemplateCard } from '@/components/template/TemplateCard';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
@@ -10,15 +11,18 @@ import type { Template } from '@clip/shared';
 export function Templates() {
   const {
     fetchTemplates, filteredTemplates, nicheFilter, setNicheFilter,
-    createTemplate, deleteTemplate, loading,
+    createTemplate, deleteTemplate, applyTemplate, loading,
   } = useTemplateStore();
+  const { projects, fetchProjects } = useProjectStore();
 
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const lastProject = projects.length > 0 ? projects[projects.length - 1] : null;
 
   useEffect(() => {
     fetchTemplates();
-  }, [fetchTemplates]);
+    fetchProjects();
+  }, [fetchTemplates, fetchProjects]);
 
   const templates = filteredTemplates();
 
@@ -28,10 +32,19 @@ export function Templates() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this template?')) return;
+    if (!window.confirm('Delete this template?')) return;
     await deleteTemplate(id);
     setPreviewTemplate(null);
   };
+
+  const handleApply = useCallback(async (templateId: string) => {
+    if (!lastProject) {
+      alert('No project available. Upload a video first.');
+      return;
+    }
+    await applyTemplate(lastProject.id, templateId);
+    alert(`Template applied to "${lastProject.name}"`);
+  }, [lastProject, applyTemplate]);
 
   return (
     <div className="space-y-6">
@@ -68,6 +81,7 @@ export function Templates() {
               key={template.id}
               template={template}
               onPreview={() => setPreviewTemplate(template)}
+              onApply={lastProject ? () => handleApply(template.id) : undefined}
             />
           ))}
         </div>
@@ -79,6 +93,7 @@ export function Templates() {
           template={previewTemplate}
           onClose={() => setPreviewTemplate(null)}
           onDelete={() => handleDelete(previewTemplate.id)}
+          onApply={lastProject ? () => handleApply(previewTemplate.id) : undefined}
         />
       )}
 
