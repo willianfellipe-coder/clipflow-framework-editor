@@ -36,7 +36,13 @@ export async function settingsRoutes(app: FastifyInstance) {
     let chromeOk = false;
 
     try { execSync('ffmpeg -version', { stdio: 'ignore' }); ffmpegOk = true; } catch {}
-    try { execSync('python3 -c "import whisperx"', { stdio: 'ignore' }); whisperxOk = true; } catch {}
+
+    // Check WhisperX in venv first, then system python
+    const { resolve } = await import('path');
+    const venvPy = resolve(process.cwd(), '../../whisper/.venv/bin/python');
+    try { execSync(`${venvPy} -c "import whisperx"`, { stdio: 'ignore' }); whisperxOk = true; } catch {
+      try { execSync('python3 -c "import whisperx"', { stdio: 'ignore' }); whisperxOk = true; } catch {}
+    }
 
     const chromePaths = [
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',

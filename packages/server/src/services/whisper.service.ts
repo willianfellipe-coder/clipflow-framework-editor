@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { PATHS } from '../config.js';
 import { broadcast } from '../plugins/websocket.js';
@@ -23,28 +23,22 @@ export class WhisperService {
     const outputPath = path.join(PATHS.transcriptions, `${projectId}.json`);
     const whisperScript = path.join(PATHS.root, 'whisper', 'transcribe.py');
 
-    // Try to use the venv Python, fall back to system python3
+    // Use venv Python (has WhisperX installed), fall back to system
     const venvPython = path.join(PATHS.root, 'whisper', '.venv', 'bin', 'python');
-    const pythonCmd = 'python3';
+    const pythonCmd = existsSync(venvPython) ? venvPython : 'python3';
 
     const args = [
       whisperScript,
       audioPath,
       outputPath,
-      '--model', options.model || 'large-v3',
+      '--model', options.model || 'base',
       ...(options.language && options.language !== 'auto' ? ['--language', options.language] : []),
     ];
 
     let lastPercent = 0;
 
     return new Promise((resolve, reject) => {
-      // Try venv first, then system python
-      let child: ReturnType<typeof spawn>;
-      try {
-        child = spawn(venvPython, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-      } catch {
-        child = spawn(pythonCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-      }
+      const child = spawn(pythonCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
       // Parse stderr for progress
       child.stderr?.on('data', (data: Buffer) => {
