@@ -19,6 +19,7 @@ export function CaptionTrack({ words, pixelsPerSecond, selectedWordIndex, onSele
           <button
             key={i}
             onClick={() => onSelectWord(i)}
+            aria-label={word.word}
             className={cn(
               'absolute top-1 bottom-1 rounded text-[9px] overflow-hidden px-0.5 transition-colors',
               'bg-indigo-500/25 border border-indigo-500/40 text-indigo-200 hover:bg-indigo-500/40',

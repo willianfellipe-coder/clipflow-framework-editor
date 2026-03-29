@@ -19,7 +19,7 @@ export function QualitySettings({ selected, onChange }: QualitySettingsProps) {
             key={id}
             onClick={() => onChange(id)}
             className={cn(
-              'rounded-md border p-2.5 text-left transition-colors',
+              'cursor-pointer rounded-md border p-2.5 text-left transition-colors',
               selected === id
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:border-primary/30',

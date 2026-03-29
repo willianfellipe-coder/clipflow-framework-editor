@@ -41,8 +41,9 @@ export function SceneCard({ type, order, startTime, endTime, description, isSele
   return (
     <button
       onClick={onClick}
+      aria-label={`${type} scene ${formatTime(startTime)} - ${formatTime(endTime)}`}
       className={cn(
-        'w-full rounded-md border p-2.5 text-left transition-all',
+        'w-full cursor-pointer rounded-md border p-2.5 text-left transition-all',
         cfg.bg,
         isSelected && 'ring-2 ring-primary ring-offset-1 ring-offset-background',
       )}

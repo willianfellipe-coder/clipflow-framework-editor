@@ -31,7 +31,7 @@ export function FormatSelector({ selected, onChange }: FormatSelectorProps) {
           key={fmt.id}
           onClick={() => toggle(fmt.id)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors',
+            'flex w-full cursor-pointer items-center gap-3 rounded-md border p-3 text-left transition-colors',
             selected.includes(fmt.id)
               ? 'border-primary bg-primary/5'
               : 'border-border hover:border-primary/30',

@@ -187,7 +187,8 @@ export function Dashboard() {
               <button
                 key={project.id}
                 onClick={() => navigate(`/editor/${project.id}`)}
-                className="rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
+                aria-label={project.name}
+                className="cursor-pointer rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
               >
                 <div className="aspect-video overflow-hidden rounded bg-secondary">
                   <img

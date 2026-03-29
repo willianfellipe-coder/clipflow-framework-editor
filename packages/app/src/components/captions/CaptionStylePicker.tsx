@@ -24,7 +24,7 @@ export function CaptionStylePicker({ selected, onChange }: CaptionStylePickerPro
             key={style.id}
             onClick={() => onChange(style.id)}
             className={cn(
-              'rounded border p-2 text-left text-xs transition-colors',
+              'cursor-pointer rounded border p-2 text-left text-xs transition-colors',
               selected === style.id
                 ? 'border-primary bg-primary/10'
                 : 'border-border bg-card hover:border-primary/30',

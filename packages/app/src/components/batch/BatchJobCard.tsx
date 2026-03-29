@@ -59,7 +59,7 @@ export function BatchJobCard({ job, onStart, onPause, onDelete }: BatchJobCardPr
         {(job.status === 'pending' || job.status === 'paused') && (
           <button
             onClick={onStart}
-            className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            className="cursor-pointer inline-flex items-center gap-1 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Play className="h-3 w-3" />
             {job.status === 'paused' ? 'Resume' : 'Start'}
@@ -68,7 +68,7 @@ export function BatchJobCard({ job, onStart, onPause, onDelete }: BatchJobCardPr
         {job.status === 'processing' && (
           <button
             onClick={onPause}
-            className="inline-flex items-center gap-1 rounded bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-700"
+            className="cursor-pointer inline-flex items-center gap-1 rounded bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-700"
           >
             <Pause className="h-3 w-3" />
             Pause
@@ -76,7 +76,7 @@ export function BatchJobCard({ job, onStart, onPause, onDelete }: BatchJobCardPr
         )}
         <button
           onClick={onDelete}
-          className="inline-flex items-center gap-1 rounded bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
+          className="cursor-pointer inline-flex items-center gap-1 rounded bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="h-3 w-3" />
           Delete

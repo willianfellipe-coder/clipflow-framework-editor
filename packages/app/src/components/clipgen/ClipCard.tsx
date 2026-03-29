@@ -29,7 +29,7 @@ export function ClipCard({ clip, isSelected, onSelect, onAccept, onReject }: Cli
     <div
       onClick={onSelect}
       className={cn(
-        'cursor-pointer rounded-lg border bg-card p-4 transition-all',
+        'cursor-pointer card-hover rounded-lg border bg-card p-4 transition-all',
         isSelected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/40',
         clip.status === 'rejected' && 'opacity-40',
       )}

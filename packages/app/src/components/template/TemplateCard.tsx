@@ -14,7 +14,7 @@ export function TemplateCard({ template, onPreview, onApply }: TemplateCardProps
   const transitions = template.defaultTransitions ? JSON.parse(template.defaultTransitions) : [];
 
   return (
-    <div className="group rounded-lg border border-border bg-card transition-colors hover:border-primary/40">
+    <div role="button" tabIndex={0} className="group cursor-pointer card-hover rounded-lg border border-border bg-card transition-colors hover:border-primary/40">
       {/* Colored header */}
       <div
         className="flex h-28 items-center justify-center rounded-t-lg"
