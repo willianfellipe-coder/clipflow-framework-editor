@@ -41,7 +41,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
     // Check WhisperX in venv first, then system python
     const venvPy = path.resolve(PATHS.root, 'whisper', '.venv', 'bin', 'python');
-    try { execSync(`${venvPy} -c "import whisperx"`, { stdio: 'ignore' }); whisperxOk = true; } catch {
+    try { execSync(`"${venvPy}" -c "import whisperx"`, { stdio: 'ignore' }); whisperxOk = true; } catch {
       try { execSync('python3 -c "import whisperx"', { stdio: 'ignore' }); whisperxOk = true; } catch {}
     }
 
