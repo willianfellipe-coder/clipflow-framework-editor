@@ -15,12 +15,17 @@
  */
 
 import { config } from '../config.js';
+import { db } from '../db/index.js';
+import { settings } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import { claudeService, type AnalysisResult } from './claude.service.js';
 import { clipGenService } from './clipgen.service.js';
 import type { ClipAnalysisRequest, ClipAnalysisResult } from '@clip/shared';
 import type { Template } from '@clip/shared';
 
 export type AIMode = 'claude-api' | 'claude-code' | 'none';
+
+const MCP_SETTING_KEY = 'mcp_connected';
 
 interface TranscriptionData {
   segments: { text: string; start: number; end: number; speaker?: string }[];
@@ -35,13 +40,26 @@ interface VideoMetadata {
 }
 
 class AIProvider {
-  private mcpConnected = false;
-
   /**
-   * Set MCP connection state (called when MCP server notifies us).
+   * Set MCP connection state — persists to DB so it survives server restarts.
    */
   setMcpConnected(connected: boolean) {
-    this.mcpConnected = connected;
+    const now = new Date();
+    const value = connected ? 'true' : 'false';
+    const existing = db.select().from(settings).where(eq(settings.key, MCP_SETTING_KEY)).get();
+    if (existing) {
+      db.update(settings).set({ value, updatedAt: now }).where(eq(settings.key, MCP_SETTING_KEY)).run();
+    } else {
+      db.insert(settings).values({ key: MCP_SETTING_KEY, value, updatedAt: now }).run();
+    }
+  }
+
+  /**
+   * Check if MCP was marked as connected (reads from DB).
+   */
+  private isMcpConnected(): boolean {
+    const row = db.select().from(settings).where(eq(settings.key, MCP_SETTING_KEY)).get();
+    return row?.value === 'true';
   }
 
   /**
@@ -49,7 +67,7 @@ class AIProvider {
    */
   getMode(): AIMode {
     // Check if running inside Claude Code MCP context
-    if (process.env.CLAUDE_CODE === 'true' || process.env.MCP_MODE === 'true' || this.mcpConnected) {
+    if (process.env.CLAUDE_CODE === 'true' || process.env.MCP_MODE === 'true' || this.isMcpConnected()) {
       return 'claude-code';
     }
 

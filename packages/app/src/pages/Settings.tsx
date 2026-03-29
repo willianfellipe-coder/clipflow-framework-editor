@@ -1,25 +1,43 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertCircle, Plug, Unplug } from 'lucide-react';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { api } from '@/lib/api';
+
+interface AIStatus {
+  mode: string;
+  available: boolean;
+  message: string;
+}
 
 interface SystemStatus {
   ffmpeg: boolean;
   whisperx: boolean;
   chromium: boolean;
   database: boolean;
-  ai: { mode: string; available: boolean; message: string };
+  ai: AIStatus;
 }
 
 export function Settings() {
   const { settings, fetchSettings, updateSetting, loading } = useSettingsStore();
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [restarting, setRestarting] = useState(false);
+  const [togglingAi, setTogglingAi] = useState(false);
 
   useEffect(() => {
     fetchSettings();
     api.get<SystemStatus>('/settings/system-check').then(setSystemStatus).catch(() => {});
   }, [fetchSettings]);
+
+  const handleToggleAi = async () => {
+    if (!systemStatus) return;
+    setTogglingAi(true);
+    try {
+      const connected = !systemStatus.ai.available;
+      const newStatus = await api.post<AIStatus>('/settings/mcp-connected', { connected });
+      setSystemStatus((prev) => prev ? { ...prev, ai: newStatus } : prev);
+    } catch { /* ignore */ }
+    setTogglingAi(false);
+  };
 
   const handleRestart = async () => {
     setRestarting(true);
@@ -122,9 +140,22 @@ export function Settings() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-center gap-2 pt-1 text-sm">
-                <div className={`h-2 w-2 rounded-full ${systemStatus.ai.available ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
-                <span className="text-muted-foreground">AI: {systemStatus.ai.message}</span>
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`h-2 w-2 rounded-full ${systemStatus.ai.available ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                  <span className="text-muted-foreground">AI: {systemStatus.ai.message}</span>
+                </div>
+                <button
+                  onClick={handleToggleAi}
+                  disabled={togglingAi}
+                  className="cursor-pointer inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/80 disabled:opacity-50 border border-border"
+                >
+                  {systemStatus.ai.available ? (
+                    <><Unplug className="h-3.5 w-3.5" /> Desconectar</>
+                  ) : (
+                    <><Plug className="h-3.5 w-3.5" /> Conectar Claude Code</>
+                  )}
+                </button>
               </div>
             </div>
           )}

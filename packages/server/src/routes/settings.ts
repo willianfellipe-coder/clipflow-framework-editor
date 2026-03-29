@@ -78,11 +78,12 @@ export async function settingsRoutes(app: FastifyInstance) {
     return { status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() };
   });
 
-  // MCP connection notification (called by MCP server on startup)
-  app.post('/api/settings/mcp-connected', async () => {
+  // MCP connection toggle (called by MCP server on startup or from UI)
+  app.post<{ Body: { connected?: boolean } }>('/api/settings/mcp-connected', async (request) => {
     const { aiProvider } = await import('../services/ai-provider.js');
-    aiProvider.setMcpConnected(true);
-    return { ok: true };
+    const connected = request.body?.connected !== false; // default true
+    aiProvider.setMcpConnected(connected);
+    return aiProvider.getStatus();
   });
 
   // Server restart (for dev — tsx watch will auto-restart)
