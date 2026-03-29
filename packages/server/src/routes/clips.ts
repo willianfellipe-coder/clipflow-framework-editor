@@ -126,7 +126,7 @@ export async function clipRoutes(app: FastifyInstance) {
   });
 
   // Bulk update clips
-  app.put<{
+  app.patch<{
     Params: { projectId: string };
     Body: { clipIds: string[]; updates: Record<string, unknown> };
   }>('/api/clips/:projectId/bulk', async (request) => {
