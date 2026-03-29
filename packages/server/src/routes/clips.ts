@@ -188,6 +188,70 @@ export async function clipRoutes(app: FastifyInstance) {
     db.delete(clipPresets).where(eq(clipPresets.id, request.params.presetId)).run();
     return reply.status(204).send();
   });
+
+  // ── Save clips from MCP/external source (Claude Code integration) ──
+
+  app.post<{
+    Params: { projectId: string };
+    Body: {
+      clips: { startTime: number; endTime: number; title: string; hookSentence?: string; hookScore?: number; emotionalTone?: string; suggestedHashtags?: string[]; reason?: string }[];
+      targetPlatform?: string;
+      summary?: string;
+    };
+  }>('/api/clips/save/:projectId', async (request) => {
+    const project = db.select().from(projects).where(eq(projects.id, request.params.projectId)).get();
+    if (!project) throw new AppError(404, 'Project not found', 'NOT_FOUND');
+
+    const { clips: clipData, targetPlatform, summary } = request.body;
+    const now = new Date();
+    const analysisId = nanoid();
+
+    // Create analysis record
+    const transcription = db.select().from(transcriptions)
+      .where(eq(transcriptions.projectId, project.id)).get();
+
+    db.insert(clipAnalyses).values({
+      id: analysisId,
+      projectId: project.id,
+      transcriptionId: transcription?.id || null,
+      targetDuration: 30,
+      numberOfClips: clipData.length,
+      targetPlatform: targetPlatform || 'tiktok',
+      status: 'done',
+      rawResponse: JSON.stringify({ clips: clipData, summary }),
+      clipsGenerated: clipData.length,
+      modelUsed: 'claude-code-mcp',
+      createdAt: now,
+      completedAt: now,
+    }).run();
+
+    // Save clips
+    for (let i = 0; i < clipData.length; i++) {
+      const c = clipData[i];
+      db.insert(clips).values({
+        id: nanoid(),
+        projectId: project.id,
+        analysisId,
+        startTime: c.startTime,
+        endTime: c.endTime,
+        title: c.title || 'Untitled Clip',
+        hookSentence: c.hookSentence || null,
+        hookScore: c.hookScore || 0,
+        emotionalTone: c.emotionalTone || 'neutral',
+        suggestedHashtags: c.suggestedHashtags ? JSON.stringify(c.suggestedHashtags) : null,
+        aiReason: c.reason || null,
+        status: 'suggested',
+        orderIndex: i,
+        targetPlatform: targetPlatform || 'tiktok',
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+    }
+
+    broadcast('clipgen:complete', { analysisId, projectId: project.id, clipsGenerated: clipData.length });
+
+    return { message: 'Clips saved', analysisId, clipsSaved: clipData.length };
+  });
 }
 
 // ── Background processing ─────────────────────────

@@ -1,4 +1,17 @@
 #!/usr/bin/env node
+/**
+ * ClipFlow MCP Server — Claude Code / Cursor / Windsurf integration
+ *
+ * Architecture: MCP-first design where Claude Code IS the AI brain.
+ *
+ * Two modes of operation:
+ * 1. ANALYSIS TOOLS — Claude Code receives transcription data, analyzes it using its
+ *    own intelligence, and returns structured JSON (no API key needed)
+ * 2. ACTION TOOLS — Proxy to ClipFlow HTTP API for operations like transcribe, render, etc.
+ *
+ * When used from Claude Code, the AI analysis is done BY Claude Code itself.
+ * No ANTHROPIC_API_KEY required — Claude Code is already authenticated.
+ */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -18,69 +31,168 @@ async function callApi(path: string, method: string = 'GET', body?: unknown) {
 }
 
 const server = new Server(
-  { name: 'clipflow', version: '1.0.0' },
+  { name: 'clipflow', version: '2.0.0' },
   { capabilities: { tools: {} } },
 );
 
-// List tools
+// ═══════════════════════════════════════════════════════════════
+// TOOL DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
+    // ── AI Analysis Tools (Claude Code IS the brain) ──────────
+
     {
-      name: 'clipflow_create_video',
-      description: 'Create an edited social media video. Runs: upload → transcribe → analyze → render. Returns rendered video paths.',
+      name: 'clipflow_analyze_edit',
+      description: `Analyze a video transcription and generate a complete editing scene plan for social media (Reels/TikTok).
+
+You are an expert social media video editor. Analyze the transcription and produce:
+- Scene plan with timestamped segments (hook, content, transition, CTA)
+- Suggested cuts (remove silence, filler words)
+- Hook quality score (0-100) with improvement suggestions
+- CTA analysis with suggestions
+- Overall engagement score (0-100)
+
+Return ONLY valid JSON matching the specified structure.`,
       inputSchema: {
         type: 'object' as const,
         properties: {
-          video_path: { type: 'string', description: 'Absolute path to source video file' },
-          template: { type: 'string', description: 'Template name or ID', default: 'auto' },
-          formats: {
-            type: 'array',
-            items: { type: 'string', enum: ['reel_9x16', 'tiktok_9x16', 'feed_1x1', 'feed_4x5'] },
-            description: 'Output formats',
-            default: ['reel_9x16'],
-          },
-          caption_style: {
-            type: 'string',
-            enum: ['word-highlight', 'karaoke', 'pop', 'glow', 'none'],
-            default: 'word-highlight',
-          },
-          instructions: { type: 'string', description: 'Natural language editing instructions' },
-        },
-        required: ['video_path'],
-      },
-    },
-    {
-      name: 'clipflow_transcribe',
-      description: 'Transcribe a video/audio file with word-level timestamps',
-      inputSchema: {
-        type: 'object' as const,
-        properties: {
-          project_id: { type: 'string', description: 'Project ID (upload video first)' },
-          language: { type: 'string', default: 'auto' },
+          project_id: { type: 'string', description: 'ClipFlow project ID to load transcription from and save results to' },
+          niche: { type: 'string', description: 'Content niche: fitness, tech, food, education, ecommerce, podcast, or general' },
+          user_instructions: { type: 'string', description: 'Additional editing instructions from the user' },
         },
         required: ['project_id'],
       },
     },
+
     {
-      name: 'clipflow_analyze_video',
-      description: 'Analyze a video and return AI insights: engagement score, hook quality, suggested cuts',
+      name: 'clipflow_analyze_clips',
+      description: `Analyze a video transcription to identify viral moments for short-form clips (TikTok/Shorts/Reels).
+
+You are an expert viral content creator. Identify the best moments for short clips:
+- Each clip must be self-contained (makes sense in isolation)
+- Strong hook in the first sentence
+- Clips must not overlap
+- Score each clip 0-100 for viral potential
+- Suggest hashtags per clip
+- Classify emotional tone (humor, drama, surprise, insight, etc.)
+
+Return ONLY valid JSON matching the specified structure.`,
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string', description: 'ClipFlow project ID' },
+          target_duration: { type: 'number', description: 'Target clip duration in seconds (15, 30, 45, 60)', default: 30 },
+          number_of_clips: { type: 'number', description: 'How many clips to identify (1-20)', default: 5 },
+          target_platform: { type: 'string', enum: ['tiktok', 'youtube_shorts', 'instagram_reels'], default: 'tiktok' },
+          niche: { type: 'string', description: 'Content niche' },
+          tone: { type: 'string', description: 'Desired tone: energetic, professional, informal, calm, humorous', default: 'energetic' },
+          custom_instructions: { type: 'string', description: 'Additional instructions for clip selection' },
+        },
+        required: ['project_id'],
+      },
+    },
+
+    {
+      name: 'clipflow_save_analysis',
+      description: 'Save a scene plan analysis result back to the ClipFlow server. Use after clipflow_analyze_edit.',
       inputSchema: {
         type: 'object' as const,
         properties: {
           project_id: { type: 'string' },
-          niche: { type: 'string', default: 'general' },
+          analysis: {
+            type: 'object',
+            description: 'The analysis result with scenes, suggestedCuts, hookAnalysis, ctaAnalysis, contentScore, summary',
+            properties: {
+              scenes: { type: 'array', description: 'Array of scene objects with order, startTime, endTime, type, description, effects, transitionIn, transitionOut' },
+              suggestedCuts: { type: 'array' },
+              suggestedEffects: { type: 'array' },
+              hookAnalysis: { type: 'object' },
+              ctaAnalysis: { type: 'object' },
+              contentScore: { type: 'number' },
+              summary: { type: 'string' },
+            },
+          },
+        },
+        required: ['project_id', 'analysis'],
+      },
+    },
+
+    {
+      name: 'clipflow_save_clips',
+      description: 'Save clip analysis results back to the ClipFlow server. Use after clipflow_analyze_clips.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string' },
+          target_platform: { type: 'string', default: 'tiktok' },
+          clips: {
+            type: 'array',
+            description: 'Array of clip objects with startTime, endTime, title, hookSentence, hookScore, emotionalTone, suggestedHashtags, reason',
+          },
+          summary: { type: 'string' },
+        },
+        required: ['project_id', 'clips'],
+      },
+    },
+
+    // ── Data Access Tools ─────────────────────────────────────
+
+    {
+      name: 'clipflow_get_transcription',
+      description: 'Get the transcription (word timestamps + segments) for a project. Use this to feed data to analyze_edit or analyze_clips.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string' },
         },
         required: ['project_id'],
       },
     },
+
     {
-      name: 'clipflow_list_templates',
-      description: 'List all available video editing templates',
+      name: 'clipflow_get_project',
+      description: 'Get project details including metadata, status, and template info.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string' },
+        },
+        required: ['project_id'],
+      },
+    },
+
+    {
+      name: 'clipflow_list_projects',
+      description: 'List all projects in ClipFlow with their status.',
       inputSchema: { type: 'object' as const, properties: {} },
     },
+
+    // ── Action Tools (proxy to HTTP API) ──────────────────────
+
+    {
+      name: 'clipflow_transcribe',
+      description: 'Start WhisperX transcription for a project. The video must be uploaded first.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string' },
+          language: { type: 'string', description: 'Language code or "auto"', default: 'auto' },
+        },
+        required: ['project_id'],
+      },
+    },
+
+    {
+      name: 'clipflow_list_templates',
+      description: 'List all available video editing templates with niche configurations.',
+      inputSchema: { type: 'object' as const, properties: {} },
+    },
+
     {
       name: 'clipflow_apply_template',
-      description: 'Apply a template to an existing project',
+      description: 'Apply a template to a project. Updates scenes with template effects, transitions, caption style, CTA config.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -90,28 +202,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['project_id', 'template_id'],
       },
     },
+
     {
       name: 'clipflow_render',
-      description: 'Trigger rendering for a project in specified format',
+      description: 'Start rendering a project to video. Supports 5 formats and 4 quality levels.',
       inputSchema: {
         type: 'object' as const,
         properties: {
           project_id: { type: 'string' },
-          format: { type: 'string', enum: ['reel_9x16', 'tiktok_9x16', 'feed_1x1', 'feed_4x5', 'story_9x16'] },
+          format: { type: 'string', enum: ['reel_9x16', 'tiktok_9x16', 'feed_1x1', 'feed_4x5', 'story_9x16'], default: 'reel_9x16' },
           quality: { type: 'string', enum: ['draft', 'standard', 'high', 'maximum'], default: 'standard' },
         },
         required: ['project_id'],
       },
     },
+
     {
       name: 'clipflow_batch_process',
-      description: 'Process multiple videos with the same template and settings',
+      description: 'Create and start a batch job to process multiple videos with the same template.',
       inputSchema: {
         type: 'object' as const,
         properties: {
-          video_paths: { type: 'array', items: { type: 'string' }, description: 'Array of video file paths' },
+          video_paths: { type: 'array', items: { type: 'string' }, description: 'Absolute paths to video files' },
           template_id: { type: 'string' },
-          formats: { type: 'array', items: { type: 'string' } },
+          formats: { type: 'array', items: { type: 'string' }, default: ['reel_9x16'] },
         },
         required: ['video_paths'],
       },
@@ -119,27 +233,148 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 
-// Handle tool calls
+// ═══════════════════════════════════════════════════════════════
+// TOOL HANDLERS
+// ═══════════════════════════════════════════════════════════════
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
     switch (name) {
-      case 'clipflow_create_video': {
-        // Full pipeline: this is a convenience tool
-        const result = await callApi('/api/upload', 'POST'); // Would need file upload
-        return { content: [{ type: 'text', text: JSON.stringify({ message: 'Use clipflow_transcribe, clipflow_analyze_video, and clipflow_render for step-by-step control. Full pipeline requires file upload via the web UI.', args }, null, 2) }] };
+
+      // ── AI Analysis Tools ───────────────────────────────────
+
+      case 'clipflow_analyze_edit': {
+        const a = args as { project_id: string; niche?: string; user_instructions?: string };
+
+        // Load transcription from server
+        const transcription = await callApi(`/api/projects/${a.project_id}/transcription`);
+        const project = await callApi(`/api/projects/${a.project_id}`);
+        const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : {};
+
+        // Return transcription data to Claude Code — it will analyze and call save_analysis
+        return {
+          content: [{
+            type: 'text',
+            text: `## ClipFlow Analysis Request
+
+**Project:** ${project.name} (${a.project_id})
+**Duration:** ${meta.duration?.toFixed(1) || '?'}s | **Resolution:** ${meta.width || '?'}x${meta.height || '?'}
+**Niche:** ${a.niche || project.nicheId || 'general'}
+${a.user_instructions ? `**Instructions:** ${a.user_instructions}` : ''}
+
+### Transcription (${transcription.segments?.length || 0} segments, ${transcription.wordTimestamps?.length || 0} words)
+
+${(transcription.segments || []).map((s: { start: number; end: number; text: string; speaker?: string }) =>
+  `[${s.start.toFixed(1)}s-${s.end.toFixed(1)}s] ${s.speaker ? `(${s.speaker}) ` : ''}${s.text}`
+).join('\n')}
+
+---
+
+**Analyze this transcription and return JSON with this structure:**
+
+\`\`\`json
+{
+  "scenes": [{"order": 1, "startTime": 0.0, "endTime": 2.5, "type": "hook|content|transition|broll|cta|outro", "description": "...", "effects": [], "transitionIn": "cut", "transitionOut": "cut"}],
+  "suggestedCuts": [{"start": 0, "end": 0, "reason": "..."}],
+  "suggestedEffects": [{"timestamp": 0, "effect": "zoom_punch", "reason": "..."}],
+  "hookAnalysis": {"score": 0, "currentHook": "...", "suggestion": "..."},
+  "ctaAnalysis": {"score": 0, "hasCta": false, "suggestion": "..."},
+  "contentScore": 0,
+  "summary": "..."
+}
+\`\`\`
+
+After generating the analysis, call **clipflow_save_analysis** with project_id="${a.project_id}" and the analysis JSON to save it.`,
+          }],
+        };
       }
+
+      case 'clipflow_analyze_clips': {
+        const a = args as { project_id: string; target_duration?: number; number_of_clips?: number; target_platform?: string; niche?: string; tone?: string; custom_instructions?: string };
+
+        const transcription = await callApi(`/api/projects/${a.project_id}/transcription`);
+        const project = await callApi(`/api/projects/${a.project_id}`);
+        const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : {};
+
+        const platform = a.target_platform || 'tiktok';
+        const duration = a.target_duration || 30;
+        const count = a.number_of_clips || 5;
+
+        return {
+          content: [{
+            type: 'text',
+            text: `## ClipGen Analysis Request
+
+**Project:** ${project.name} | **Platform:** ${platform} | **Target:** ${count} clips of ~${duration}s
+**Tone:** ${a.tone || 'energetic'} | **Niche:** ${a.niche || 'general'}
+${a.custom_instructions ? `**Instructions:** ${a.custom_instructions}` : ''}
+**Video:** ${meta.duration?.toFixed(1) || '?'}s
+
+### Transcription
+
+${(transcription.segments || []).map((s: { start: number; end: number; text: string; speaker?: string }) =>
+  `[${s.start.toFixed(1)}s-${s.end.toFixed(1)}s] ${s.speaker ? `(${s.speaker}) ` : ''}${s.text}`
+).join('\n')}
+
+---
+
+**Identify the ${count} best moments for ${platform} clips (~${duration}s each). Return JSON:**
+
+\`\`\`json
+{
+  "clips": [{"startTime": 0, "endTime": 30, "title": "...", "hookSentence": "...", "hookScore": 85, "emotionalTone": "insight", "suggestedHashtags": ["tag1"], "reason": "..."}],
+  "summary": "...",
+  "totalMomentsFound": 0
+}
+\`\`\`
+
+After generating clips, call **clipflow_save_clips** with project_id="${a.project_id}" and the clips array to save them.`,
+          }],
+        };
+      }
+
+      case 'clipflow_save_analysis': {
+        const a = args as { project_id: string; analysis: Record<string, unknown> };
+        const result = await callApi(`/api/projects/${a.project_id}/analysis/save`, 'POST', a.analysis);
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      case 'clipflow_save_clips': {
+        const a = args as { project_id: string; clips: unknown[]; target_platform?: string; summary?: string };
+        const result = await callApi(`/api/clips/save/${a.project_id}`, 'POST', {
+          clips: a.clips,
+          targetPlatform: a.target_platform || 'tiktok',
+          summary: a.summary,
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      // ── Data Access Tools ───────────────────────────────────
+
+      case 'clipflow_get_transcription': {
+        const a = args as { project_id: string };
+        const result = await callApi(`/api/projects/${a.project_id}/transcription`);
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      case 'clipflow_get_project': {
+        const a = args as { project_id: string };
+        const result = await callApi(`/api/projects/${a.project_id}`);
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      case 'clipflow_list_projects': {
+        const result = await callApi('/api/projects');
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      // ── Action Tools ────────────────────────────────────────
 
       case 'clipflow_transcribe': {
         const a = args as { project_id: string; language?: string };
         const result = await callApi(`/api/projects/${a.project_id}/transcribe`, 'POST', { language: a.language });
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-      }
-
-      case 'clipflow_analyze_video': {
-        const a = args as { project_id: string; niche?: string };
-        const result = await callApi(`/api/projects/${a.project_id}/analyze`, 'POST', { niche: a.niche });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       }
 
@@ -171,10 +406,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           templateId: a.template_id,
           formats: a.formats || ['reel_9x16'],
         });
-        // Auto-start the batch
-        if (result.id) {
-          await callApi(`/api/batch/${result.id}/start`, 'POST');
-        }
+        if (result.id) await callApi(`/api/batch/${result.id}/start`, 'POST');
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       }
 
@@ -186,11 +418,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start server
+// Start
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('ClipFlow MCP server started');
+  console.error('ClipFlow MCP server v2.0 started (Claude Code integration)');
 }
 
 main().catch(console.error);

@@ -71,6 +71,85 @@ export async function analysisRoutes(app: FastifyInstance) {
       ctaAnalysis: row.ctaAnalysis ? JSON.parse(row.ctaAnalysis) : null,
     };
   });
+
+  // Save analysis result from MCP/external source (Claude Code integration)
+  app.post<{
+    Params: { id: string };
+    Body: {
+      scenes: { order: number; startTime: number; endTime: number; type: string; description?: string; effects?: string[]; transitionIn?: string; transitionOut?: string }[];
+      suggestedCuts?: { start: number; end: number; reason: string }[];
+      suggestedEffects?: { timestamp: number; effect: string; reason: string }[];
+      hookAnalysis?: { score: number; currentHook: string; suggestion: string };
+      ctaAnalysis?: { score: number; hasCta: boolean; suggestion: string };
+      contentScore?: number;
+      summary?: string;
+    };
+  }>('/api/projects/:id/analysis/save', async (request) => {
+    const project = db.select().from(projects).where(eq(projects.id, request.params.id)).get();
+    if (!project) throw new AppError(404, 'Project not found', 'NOT_FOUND');
+
+    const body = request.body;
+    const now = new Date();
+    const analysisId = nanoid();
+
+    // Find or create transcription (required by FK constraint)
+    let transcription = db.select().from(transcriptions)
+      .where(eq(transcriptions.projectId, project.id)).get();
+
+    if (!transcription) {
+      const tid = nanoid();
+      db.insert(transcriptions).values({
+        id: tid, projectId: project.id, model: 'mcp-placeholder',
+        fullText: '', wordTimestamps: '[]', segments: '[]', duration: 0, createdAt: now,
+      }).run();
+      transcription = db.select().from(transcriptions).where(eq(transcriptions.id, tid)).get()!;
+    }
+
+    // Save analysis
+    db.insert(analyses).values({
+      id: analysisId,
+      projectId: project.id,
+      transcriptionId: transcription.id,
+      model: 'claude-code-mcp',
+      prompt: 'Analysis via Claude Code MCP integration',
+      response: JSON.stringify(body),
+      scenePlan: JSON.stringify(body.scenes || []),
+      suggestedCuts: JSON.stringify(body.suggestedCuts || []),
+      suggestedEffects: JSON.stringify(body.suggestedEffects || []),
+      hookAnalysis: body.hookAnalysis ? JSON.stringify(body.hookAnalysis) : null,
+      ctaAnalysis: body.ctaAnalysis ? JSON.stringify(body.ctaAnalysis) : null,
+      contentScore: body.contentScore || null,
+      createdAt: now,
+    }).run();
+
+    // Auto-generate scene rows
+    db.delete(scenes).where(eq(scenes.projectId, project.id)).run();
+    for (const scene of (body.scenes || [])) {
+      db.insert(scenes).values({
+        id: nanoid(),
+        projectId: project.id,
+        analysisId,
+        order: scene.order,
+        startTime: scene.startTime,
+        endTime: scene.endTime,
+        type: scene.type as 'hook' | 'content' | 'transition' | 'broll' | 'cta' | 'outro',
+        description: scene.description || null,
+        effects: scene.effects ? JSON.stringify(scene.effects) : null,
+        transitionIn: scene.transitionIn || 'cut',
+        transitionOut: scene.transitionOut || 'cut',
+        isActive: true,
+        createdAt: now,
+      }).run();
+    }
+
+    // Update project status
+    db.update(projects).set({ status: 'editing', updatedAt: now })
+      .where(eq(projects.id, project.id)).run();
+
+    broadcast('analysis:complete', { projectId: project.id, analysisId });
+
+    return { message: 'Analysis saved', analysisId, scenesCreated: (body.scenes || []).length };
+  });
 }
 
 async function processAnalysis(
