@@ -17,6 +17,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  CreateMessageResultSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 const CLIPFLOW_URL = process.env.CLIPFLOW_URL || 'http://localhost:4400';
@@ -32,7 +33,7 @@ async function callApi(path: string, method: string = 'GET', body?: unknown) {
 
 const server = new Server(
   { name: 'clipflow', version: '2.0.0' },
-  { capabilities: { tools: {} } },
+  { capabilities: { tools: {}, sampling: {} } },
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -427,12 +428,108 @@ async function notifyMcpConnected() {
   }
 }
 
+// Extract JSON from a Claude response (strips markdown code blocks if present)
+function extractJson(text: string): string {
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  return match ? match[1] : text.trim();
+}
+
+// Process a pending_mcp analysis using MCP sampling (no API key needed)
+let processingMcp = false;
+
+async function processMcpAnalysis(project: Record<string, unknown>) {
+  if (processingMcp) return;
+  processingMcp = true;
+
+  const projectId = project.id as string;
+  const niche = (project.nicheId as string) || 'general';
+
+  try {
+    // Fetch transcription
+    const transcription = await callApi(`/api/projects/${projectId}/transcription`);
+    if (!transcription?.segments?.length) {
+      throw new Error('Transcrição não encontrada ou vazia.');
+    }
+
+    // Build analysis prompt (same content as clipflow_analyze_edit tool)
+    const segmentText = (transcription.segments as { start: number; end: number; text: string; speaker?: string }[])
+      .map((s) => `[${s.start.toFixed(1)}s-${s.end.toFixed(1)}s] ${s.speaker ? `(${s.speaker}) ` : ''}${s.text}`)
+      .join('\n');
+
+    const prompt = `Você é um especialista em edição de vídeos para redes sociais (Reels/TikTok).
+
+**Projeto:** ${project.name || projectId}
+**Nicho:** ${niche}
+**Duração do vídeo:** ${transcription.duration?.toFixed(1) || '?'}s
+
+### Transcrição (${transcription.segments?.length || 0} segmentos)
+
+${segmentText}
+
+---
+
+Analise esta transcrição e retorne SOMENTE um JSON válido com esta estrutura:
+
+\`\`\`json
+{
+  "scenes": [{"order": 1, "startTime": 0.0, "endTime": 2.5, "type": "hook|content|transition|broll|cta|outro", "description": "...", "effects": [], "transitionIn": "cut", "transitionOut": "cut"}],
+  "suggestedCuts": [{"start": 0, "end": 0, "reason": "..."}],
+  "suggestedEffects": [{"timestamp": 0, "effect": "zoom_punch", "reason": "..."}],
+  "hookAnalysis": {"score": 0, "currentHook": "...", "suggestion": "..."},
+  "ctaAnalysis": {"score": 0, "hasCta": false, "suggestion": "..."},
+  "contentScore": 0,
+  "summary": "..."
+}
+\`\`\``;
+
+    // Use MCP sampling — ask Claude Code to generate the analysis
+    const result = await server.request(
+      {
+        method: 'sampling/createMessage',
+        params: {
+          messages: [{ role: 'user', content: { type: 'text', text: prompt } }],
+          maxTokens: 4096,
+        },
+      },
+      CreateMessageResultSchema,
+    );
+
+    const responseText = result.content.type === 'text' ? result.content.text : '';
+    const analysis = JSON.parse(extractJson(responseText));
+
+    // Save analysis via HTTP API
+    await callApi(`/api/projects/${projectId}/analysis/save`, 'POST', analysis);
+
+  } catch (err) {
+    // Mark project as error so user can retry
+    try {
+      await callApi(`/api/projects/${projectId}`, 'PATCH', { status: 'error' });
+    } catch { /* ignore */ }
+    console.error(`[ClipFlow MCP] Analysis failed for ${projectId}:`, err);
+  } finally {
+    processingMcp = false;
+  }
+}
+
+// Poll for pending_mcp analyses every 3 seconds
+function startAnalysisPoller() {
+  setInterval(async () => {
+    try {
+      const project = await callApi('/api/projects/pending-mcp');
+      if (project?.id) {
+        await processMcpAnalysis(project);
+      }
+    } catch { /* server may not be running */ }
+  }, 3000);
+}
+
 // Start
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('ClipFlow MCP server v2.0 started (Claude Code integration)');
   notifyMcpConnected();
+  startAnalysisPoller();
 }
 
 main().catch(console.error);

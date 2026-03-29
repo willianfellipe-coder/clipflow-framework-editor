@@ -2,8 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { projects, transcriptions, analyses, scenes, templates } from '../db/schema.js';
-import { eq, desc, and, ne } from 'drizzle-orm';
+import { eq, desc, and, ne, or } from 'drizzle-orm';
 import { aiProvider } from '../services/ai-provider.js';
+import { config } from '../config.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
 
@@ -27,21 +28,41 @@ export async function analysisRoutes(app: FastifyInstance) {
     // DAT-001: Atomic status update to prevent race conditions
     const updated = db.update(projects)
       .set({ status: 'analyzing', updatedAt: new Date() })
-      .where(and(eq(projects.id, project.id), ne(projects.status, 'analyzing')))
+      .where(and(
+        eq(projects.id, project.id),
+        ne(projects.status, 'analyzing'),
+        ne(projects.status, 'pending_mcp'),
+      ))
       .run();
     if (updated.changes === 0) {
       throw new AppError(409, 'Analysis already in progress', 'ALREADY_ANALYZING');
     }
 
+    const body = request.body || {};
+    const niche = body.niche || project.nicheId || 'general';
+    const templateId = body.templateId || project.templateId || null;
+
+    // MCP mode without API key: queue for Claude Code sampling instead of direct API call
+    const isMcpMode = aiProvider.getMode() === 'claude-code';
+    const hasApiKey = Boolean(config.anthropicApiKey);
+
+    if (isMcpMode && !hasApiKey) {
+      db.update(projects)
+        .set({ status: 'pending_mcp', updatedAt: new Date() })
+        .where(eq(projects.id, project.id))
+        .run();
+      broadcast('analysis:mcp_pending', { projectId: project.id, niche, templateId });
+      return reply.status(202).send({ message: 'Analysis queued for Claude Code', projectId: project.id });
+    }
+
     reply.status(202).send({ message: 'Analysis started', projectId: project.id });
 
     // Run analysis in background
-    const body = request.body || {};
     processAnalysis(
       project.id,
       transcription,
-      body.niche || project.nicheId || 'general',
-      body.templateId || project.templateId || null,
+      niche,
+      templateId,
       body.instructions,
     ).catch((err) => {
       app.log.error(err, 'Analysis failed');
@@ -149,6 +170,14 @@ export async function analysisRoutes(app: FastifyInstance) {
     broadcast('analysis:complete', { projectId: project.id, analysisId });
 
     return { message: 'Analysis saved', analysisId, scenesCreated: (body.scenes || []).length };
+  });
+
+  // MCP polling endpoint — returns the first project waiting for Claude Code sampling
+  app.get('/api/projects/pending-mcp', async () => {
+    const project = db.select().from(projects)
+      .where(eq(projects.status, 'pending_mcp'))
+      .get();
+    return project ?? null;
   });
 }
 

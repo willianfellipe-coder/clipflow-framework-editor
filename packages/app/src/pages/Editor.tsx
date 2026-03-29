@@ -91,7 +91,16 @@ export function Editor() {
       if (pid === projectId) { setIsAnalyzing(false); setAnalysisError(error); }
     });
 
-    return () => { unsub1(); unsub2(); unsub3(); };
+    const unsub4 = subscribe('analysis:mcp_pending', (data: unknown) => {
+      const { projectId: pid } = data as { projectId: string };
+      if (pid === projectId) {
+        setIsAnalyzing(true);
+        setAnalysisStage('Analisando com Claude Code...');
+        setAnalysisError(null);
+      }
+    });
+
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, [projectId, subscribe, fetchScenes]);
 
   const handleAnalyze = useCallback(async () => {

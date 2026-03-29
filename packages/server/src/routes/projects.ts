@@ -48,7 +48,7 @@ export async function projectRoutes(app: FastifyInstance) {
       const existing = db.select().from(projects).where(eq(projects.id, request.params.id)).get();
       if (!existing) throw new AppError(404, 'Project not found', 'NOT_FOUND');
 
-      const allowedFields = ['name', 'description', 'nicheId', 'settings'];
+      const allowedFields = ['name', 'description', 'nicheId', 'settings', 'status'];
       const updates: Record<string, unknown> = { updatedAt: new Date() };
       for (const field of allowedFields) {
         if (request.body[field] !== undefined) updates[field] = request.body[field];
