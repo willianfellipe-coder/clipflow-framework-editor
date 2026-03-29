@@ -46,6 +46,9 @@ export async function settingsRoutes(app: FastifyInstance) {
     const { existsSync } = await import('fs');
     chromeOk = chromePaths.some((p) => existsSync(p));
 
+    const { aiProvider } = await import('../services/ai-provider.js');
+    const aiStatus = aiProvider.getStatus();
+
     return {
       node: process.version,
       platform: process.platform,
@@ -53,7 +56,14 @@ export async function settingsRoutes(app: FastifyInstance) {
       whisperx: whisperxOk,
       chromium: chromeOk,
       database: true,
+      ai: aiStatus,
     };
+  });
+
+  // AI provider status
+  app.get('/api/settings/ai-status', async () => {
+    const { aiProvider } = await import('../services/ai-provider.js');
+    return aiProvider.getStatus();
   });
 
   // GAP-007: Health check for load balancers and monitoring

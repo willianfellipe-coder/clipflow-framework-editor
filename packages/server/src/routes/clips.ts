@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { projects, transcriptions, clips, clipAnalyses, clipPresets } from '../db/schema.js';
 import { eq, desc, asc } from 'drizzle-orm';
-import { clipGenService } from '../services/clipgen.service.js';
+import { aiProvider } from '../services/ai-provider.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
 import type { ClipAnalysisRequest } from '@clip/shared';
@@ -269,7 +269,7 @@ async function processClipAnalysis(
   const wordTimestamps = JSON.parse(transcription.wordTimestamps);
   const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : { duration: 0, width: 1080, height: 1920 };
 
-  const result = await clipGenService.analyzeForClips(
+  const result = await aiProvider.analyzeForClips(
     { segments, wordTimestamps, language: transcription.language },
     analysisConfig,
     meta,

@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { projects, transcriptions, analyses, scenes, templates } from '../db/schema.js';
 import { eq, desc, and, ne } from 'drizzle-orm';
-import { claudeService } from '../services/claude.service.js';
+import { aiProvider } from '../services/ai-provider.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
 
@@ -174,7 +174,7 @@ async function processAnalysis(
   broadcast('analysis:progress', { projectId, stage: 'Analyzing content with AI...' });
 
   // Call Claude
-  const result = await claudeService.analyzeForEdit(
+  const result = await aiProvider.analyzeForEdit(
     { segments, wordTimestamps, language: transcription.language },
     template,
     niche,
