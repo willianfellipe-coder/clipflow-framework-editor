@@ -38,6 +38,7 @@ export function Editor() {
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [hasTranscription, setHasTranscription] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isMcpPending, setIsMcpPending] = useState(false);
   const [analysisStage, setAnalysisStage] = useState('');
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<{ contentScore?: number; hookAnalysis?: { score: number }; ctaAnalysis?: { score: number }; summary?: string } | null>(null);
@@ -53,6 +54,7 @@ export function Editor() {
       setProject(p);
       if (p.sourceVideoMeta) setMeta(JSON.parse(p.sourceVideoMeta as string));
       if (p.status === 'analyzing') setIsAnalyzing(true);
+      if (p.status === 'pending_mcp') setIsMcpPending(true);
     }).catch(() => {});
 
     api.get<{ wordTimestamps: WordTimestamp[] }>(`/projects/${projectId}/transcription`).then(() => {
@@ -80,6 +82,7 @@ export function Editor() {
       const { projectId: pid } = data as { projectId: string };
       if (pid === projectId) {
         setIsAnalyzing(false);
+        setIsMcpPending(false);
         fetchScenes(projectId);
         api.get<Record<string, unknown>>(`/projects/${projectId}/analysis`).then((a) => setAnalysisResult(a as typeof analysisResult)).catch(() => {});
         api.get<Project>(`/projects/${projectId}`).then(setProject).catch(() => {});
@@ -88,14 +91,14 @@ export function Editor() {
 
     const unsub3 = subscribe('analysis:error', (data: unknown) => {
       const { projectId: pid, error } = data as { projectId: string; error: string };
-      if (pid === projectId) { setIsAnalyzing(false); setAnalysisError(error); }
+      if (pid === projectId) { setIsAnalyzing(false); setIsMcpPending(false); setAnalysisError(error); }
     });
 
     const unsub4 = subscribe('analysis:mcp_pending', (data: unknown) => {
       const { projectId: pid } = data as { projectId: string };
       if (pid === projectId) {
-        setIsAnalyzing(true);
-        setAnalysisStage('Analisando com Claude Code...');
+        setIsAnalyzing(false);
+        setIsMcpPending(true);
         setAnalysisError(null);
       }
     });
@@ -106,10 +109,19 @@ export function Editor() {
   const handleAnalyze = useCallback(async () => {
     if (!projectId) return;
     setIsAnalyzing(true);
+    setIsMcpPending(false);
     setAnalysisStage('Starting analysis...');
     setAnalysisError(null);
     try { await api.post(`/projects/${projectId}/analyze`, {}); }
     catch (err) { setIsAnalyzing(false); setAnalysisError(err instanceof Error ? err.message : 'Analysis failed'); }
+  }, [projectId]);
+
+  const handleCancelAnalysis = useCallback(async () => {
+    if (!projectId) return;
+    try { await api.patch(`/projects/${projectId}`, { status: 'draft' }); } catch { /* ignore */ }
+    setIsAnalyzing(false);
+    setIsMcpPending(false);
+    setAnalysisStage('');
   }, [projectId]);
 
   const handleSelectScene = useCallback((id: string) => {
@@ -200,9 +212,12 @@ export function Editor() {
               selectedSceneId={selectedSceneId}
               onSelectScene={handleSelectScene}
               onAnalyze={handleAnalyze}
+              onCancelAnalysis={handleCancelAnalysis}
               isAnalyzing={isAnalyzing}
+              isMcpPending={isMcpPending}
               analysisStage={analysisStage}
               hasTranscription={hasTranscription}
+              projectName={project?.name}
             />
           </div>
           {analysisError && (

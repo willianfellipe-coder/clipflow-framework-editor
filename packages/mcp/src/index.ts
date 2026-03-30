@@ -515,25 +515,12 @@ Analise esta transcrição e retorne SOMENTE um JSON válido com esta estrutura:
   }
 }
 
-// Poll for pending_mcp analyses every 3 seconds
-function startAnalysisPoller() {
-  setInterval(async () => {
-    try {
-      const project = await callApi('/api/projects/pending-mcp');
-      if (project?.id) {
-        await processMcpAnalysis(project);
-      }
-    } catch { /* server may not be running */ }
-  }, 3000);
-}
-
 // Start
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('ClipFlow MCP server v2.0 started (Claude Code integration)');
   notifyMcpConnected();
-  startAnalysisPoller();
 }
 
 main().catch(console.error);

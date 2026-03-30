@@ -16,9 +16,12 @@ interface ScenePanelProps {
   selectedSceneId: string | null;
   onSelectScene: (id: string) => void;
   onAnalyze: () => void;
+  onCancelAnalysis?: () => void;
   isAnalyzing: boolean;
+  isMcpPending?: boolean;
   analysisStage: string;
   hasTranscription: boolean;
+  projectName?: string;
 }
 
 export function ScenePanel({
@@ -26,15 +29,23 @@ export function ScenePanel({
   selectedSceneId,
   onSelectScene,
   onAnalyze,
+  onCancelAnalysis,
   isAnalyzing,
+  isMcpPending,
   analysisStage,
   hasTranscription,
+  projectName,
 }: ScenePanelProps) {
-  if (isAnalyzing) {
+  if (isAnalyzing || isMcpPending) {
     return (
       <div className="flex h-full flex-col p-3">
         <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Scenes</h3>
-        <AnalysisProgress stage={analysisStage} />
+        <AnalysisProgress
+          stage={analysisStage}
+          isMcpPending={isMcpPending}
+          projectName={projectName}
+          onCancel={isMcpPending ? onCancelAnalysis : undefined}
+        />
       </div>
     );
   }
