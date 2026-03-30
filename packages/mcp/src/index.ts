@@ -482,8 +482,8 @@ Analise esta transcrição e retorne SOMENTE um JSON válido com esta estrutura:
 }
 \`\`\``;
 
-    // Use MCP sampling — ask Claude Code to generate the analysis
-    const result = await server.request(
+    // Use MCP sampling — ask Claude Code to generate the analysis (90s timeout)
+    const samplingPromise = server.request(
       {
         method: 'sampling/createMessage',
         params: {
@@ -493,6 +493,10 @@ Analise esta transcrição e retorne SOMENTE um JSON válido com esta estrutura:
       },
       CreateMessageResultSchema,
     );
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('MCP sampling timeout (90s) — Claude Code não respondeu')), 90_000),
+    );
+    const result = await Promise.race([samplingPromise, timeoutPromise]);
 
     const responseText = result.content.type === 'text' ? result.content.text : '';
     const analysis = JSON.parse(extractJson(responseText));

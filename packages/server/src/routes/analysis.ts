@@ -31,7 +31,6 @@ export async function analysisRoutes(app: FastifyInstance) {
       .where(and(
         eq(projects.id, project.id),
         ne(projects.status, 'analyzing'),
-        ne(projects.status, 'pending_mcp'),
       ))
       .run();
     if (updated.changes === 0) {
