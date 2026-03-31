@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import { Film, Download } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Film, Download, MessageSquare } from 'lucide-react';
 import type { PlayerRef } from '@remotion/player';
 import { api } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -13,6 +13,7 @@ import { TimelineEditor } from '@/components/timeline/TimelineEditor';
 import { CaptionEditor } from '@/components/captions/CaptionEditor';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { ChatPanel } from '@/components/editor/ChatPanel';
 import type { Project, VideoMeta, WordTimestamp } from '@clip/shared';
 
 interface SceneInspectorData {
@@ -28,6 +29,7 @@ interface SceneInspectorData {
 
 export function Editor() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { subscribe } = useWebSocket();
   const playerRef = useRef<PlayerRef>(null);
 
@@ -43,8 +45,13 @@ export function Editor() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<{ contentScore?: number; hookAnalysis?: { score: number }; ctaAnalysis?: { score: number }; summary?: string } | null>(null);
   const [previewFormat, setPreviewFormat] = useState('reel_9x16');
-  const [inspectorTab, setInspectorTab] = useState<'scene' | 'caption'>('scene');
+  const [inspectorTab, setInspectorTab] = useState<'scene' | 'caption' | 'chat'>('scene');
   const [showExport, setShowExport] = useState(false);
+
+  // Persist last opened project for sidebar navigation
+  useEffect(() => {
+    if (projectId) localStorage.setItem('clipflow:lastEditorProject', projectId);
+  }, [projectId]);
 
   // Load project data
   useEffect(() => {
@@ -156,14 +163,44 @@ export function Editor() {
     words.map((w) => ({ word: w.word, start: w.start, end: w.end })),
   [words]);
 
+  // Recent projects for empty state
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  useEffect(() => {
+    if (!projectId) {
+      api.get<Project[]>('/projects').then((ps) => setRecentProjects(ps.slice(0, 8))).catch(() => {});
+    }
+  }, [projectId]);
+
   if (!projectId) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-full flex-col items-center justify-center gap-6 p-8">
         <div className="text-center">
-          <Film className="mx-auto h-16 w-16 text-muted-foreground" />
-          <h2 className="mt-4 text-xl font-semibold">Select a project to start editing</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Choose a project from the Dashboard</p>
+          <Film className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h2 className="mt-3 text-lg font-semibold">Selecione um projeto para editar</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Escolha um projeto abaixo ou envie um novo no Painel</p>
         </div>
+        {recentProjects.length > 0 && (
+          <div className="grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {recentProjects.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/editor/${p.id}`)}
+                className="group rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/50"
+              >
+                <div className="aspect-video overflow-hidden rounded bg-secondary">
+                  <img
+                    src={`/static/uploads/${p.id}/thumbnail.jpg`}
+                    alt={p.name}
+                    className="h-full w-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+                <p className="mt-2 truncate text-xs font-medium group-hover:text-primary">{p.name}</p>
+                <StatusBadge status={p.status} />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -256,8 +293,8 @@ export function Editor() {
         </div>
 
         {/* Inspector with tabs */}
-        <div className="w-56 shrink-0 rounded-lg border border-border bg-card overflow-y-auto">
-          <div className="flex border-b border-border">
+        <div className="w-56 shrink-0 flex flex-col rounded-lg border border-border bg-card overflow-hidden">
+          <div className="flex shrink-0 border-b border-border">
             <button
               onClick={() => setInspectorTab('scene')}
               className={`flex-1 py-1.5 text-xs font-medium ${inspectorTab === 'scene' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
@@ -266,8 +303,18 @@ export function Editor() {
               onClick={() => setInspectorTab('caption')}
               className={`flex-1 py-1.5 text-xs font-medium ${inspectorTab === 'caption' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
             >Captions</button>
+            <button
+              onClick={() => setInspectorTab('chat')}
+              className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 ${inspectorTab === 'chat' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+            >
+              <MessageSquare className="h-3 w-3" />
+              Chat
+            </button>
           </div>
-          <div className="p-3">
+          {inspectorTab === 'chat' ? (
+            <ChatPanel projectId={projectId} />
+          ) : (
+          <div className="flex-1 overflow-y-auto p-3">
             {inspectorTab === 'scene' ? (
               selectedScene ? (
                 <div className="space-y-3 text-sm">
@@ -313,6 +360,7 @@ export function Editor() {
               />
             )}
           </div>
+          )}
         </div>
       </div>
 

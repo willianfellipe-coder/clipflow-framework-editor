@@ -12,23 +12,35 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const linkKeys = [
-  { to: '/', icon: LayoutDashboard, key: 'nav.dashboard' },
-  { to: '/editor', icon: Film, key: 'nav.editor' },
-  { to: '/clipgen', icon: Sparkles, key: 'nav.clipgen' },
-  { to: '/templates', icon: Palette, key: 'nav.templates' },
-  { to: '/batch', icon: Layers, key: 'nav.batch' },
-  { to: '/history', icon: Clock, key: 'nav.history' },
-  { to: '/settings', icon: Settings, key: 'nav.settings' },
-];
+function useLastEditorProject() {
+  const lastId = localStorage.getItem('clipflow:lastEditorProject');
+  return lastId ? `/editor/${lastId}` : '/editor';
+}
+
+function useLastClipGenProject() {
+  const lastId = localStorage.getItem('clipflow:lastClipGenProject');
+  return lastId ? `/clipgen/${lastId}` : '/clipgen';
+}
 
 export function Sidebar() {
   const { t, i18n } = useTranslation();
+  const editorLink = useLastEditorProject();
+  const clipgenLink = useLastClipGenProject();
 
   const toggleLanguage = () => {
     const next = i18n.language === 'pt-BR' ? 'en' : 'pt-BR';
     i18n.changeLanguage(next);
   };
+
+  const linkKeys = [
+    { to: '/', icon: LayoutDashboard, key: 'nav.dashboard' },
+    { to: editorLink, icon: Film, key: 'nav.editor', matchPrefix: '/editor' },
+    { to: clipgenLink, icon: Sparkles, key: 'nav.clipgen', matchPrefix: '/clipgen' },
+    { to: '/templates', icon: Palette, key: 'nav.templates' },
+    { to: '/batch', icon: Layers, key: 'nav.batch' },
+    { to: '/history', icon: Clock, key: 'nav.history' },
+    { to: '/settings', icon: Settings, key: 'nav.settings' },
+  ];
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-border bg-sidebar">
@@ -37,20 +49,21 @@ export function Sidebar() {
         <span className="text-lg font-bold text-foreground">{t('app.name')}</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {linkKeys.map(({ to, icon: Icon, key }) => (
+        {linkKeys.map(({ to, icon: Icon, key, matchPrefix }) => (
           <NavLink
-            key={to}
+            key={key}
             to={to}
             end={to === '/'}
             aria-label={t(key)}
-            className={({ isActive }) =>
-              cn(
+            className={({ isActive }) => {
+              const active = isActive || (matchPrefix ? location.pathname.startsWith(matchPrefix) : false);
+              return cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer transition-all duration-150',
-                isActive
+                active
                   ? 'bg-primary/10 text-primary glow-primary'
                   : 'text-sidebar-foreground hover:bg-secondary hover:text-foreground hover:translate-x-0.5',
-              )
-            }
+              );
+            }}
           >
             <Icon className="h-4 w-4" />
             {t(key)}

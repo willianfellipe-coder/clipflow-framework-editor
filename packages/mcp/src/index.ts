@@ -231,6 +231,34 @@ Return ONLY valid JSON matching the specified structure.`,
         required: ['video_paths'],
       },
     },
+
+    // ── Chat Tools (Editor ↔ Claude Code) ────────────────────
+
+    {
+      name: 'clipflow_get_chat',
+      description: 'Get chat messages for a project. Use this to read user editing instructions from the Editor chat panel.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string', description: 'Project ID' },
+          pending_only: { type: 'boolean', description: 'If true, only returns messages after the last assistant reply', default: false },
+        },
+        required: ['project_id'],
+      },
+    },
+
+    {
+      name: 'clipflow_chat_reply',
+      description: 'Send a reply message to the project chat. The message appears in the Editor chat panel in real-time.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          project_id: { type: 'string', description: 'Project ID' },
+          message: { type: 'string', description: 'Reply message content' },
+        },
+        required: ['project_id', 'message'],
+      },
+    },
   ],
 }));
 
@@ -408,6 +436,26 @@ After generating clips, call **clipflow_save_clips** with project_id="${a.projec
           formats: a.formats || ['reel_9x16'],
         });
         if (result.id) await callApi(`/api/batch/${result.id}/start`, 'POST');
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      // ── Chat Tools ──────────────────────────────────────────
+
+      case 'clipflow_get_chat': {
+        const a = args as { project_id: string; pending_only?: boolean };
+        const endpoint = a.pending_only
+          ? `/api/projects/${a.project_id}/chat/pending`
+          : `/api/projects/${a.project_id}/chat`;
+        const result = await callApi(endpoint);
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+
+      case 'clipflow_chat_reply': {
+        const a = args as { project_id: string; message: string };
+        const result = await callApi(`/api/projects/${a.project_id}/chat`, 'POST', {
+          role: 'assistant',
+          content: a.message,
+        });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       }
 

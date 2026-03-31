@@ -60,9 +60,12 @@ export async function uploadRoutes(app: FastifyInstance) {
       throw new AppError(422, `Could not read video file: ${err}`, 'PROBE_FAILED');
     }
 
-    // Transcode to H.264 if needed (HEVC/iPhone MOV not playable in browser)
+    // Transcode if codec isn't h264 or if profile is incompatible with browsers
+    // (e.g. iPhone records H.264 High 10 which is 10-bit — Chromium can't decode it)
+    const INCOMPATIBLE_PROFILES = ['High 10', 'High 10 Intra', 'High 4:2:2', 'High 4:4:4 Predictive'];
+    const needsTranscode = meta.codec !== 'h264' || INCOMPATIBLE_PROFILES.includes(meta.profile || '');
     let finalVideoPath = videoPath;
-    if (meta.codec !== 'h264') {
+    if (needsTranscode) {
       const h264Path = path.join(uploadDir, 'original.mp4');
       try {
         broadcast('upload:transcoding', { projectId, percent: 0, message: 'Convertendo vídeo...' });

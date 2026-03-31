@@ -27,6 +27,7 @@ export function ClipGen() {
   // Load project
   useEffect(() => {
     if (!projectId) return;
+    localStorage.setItem('clipflow:lastClipGenProject', projectId);
     api.get<Project>(`/projects/${projectId}`).then((p) => {
       setProject(p);
       if (p.sourceVideoMeta) setMeta(JSON.parse(p.sourceVideoMeta as string));

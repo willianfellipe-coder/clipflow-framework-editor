@@ -7,4 +7,5 @@ export interface VideoMeta {
   bitrate: number;
   audioCodec: string;
   audioRate: number;
+  profile?: string;
 }

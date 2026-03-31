@@ -2,6 +2,7 @@ export type ProjectStatus =
   | 'draft'
   | 'transcribing'
   | 'analyzing'
+  | 'pending_mcp'
   | 'editing'
   | 'rendering'
   | 'done'

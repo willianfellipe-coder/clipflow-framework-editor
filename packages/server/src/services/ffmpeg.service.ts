@@ -44,6 +44,7 @@ export class FFmpegService {
       bitrate: parseInt(format.bit_rate || '0', 10),
       audioCodec: audioStream?.codec_name || 'none',
       audioRate: parseInt(audioStream?.sample_rate || '0', 10),
+      profile: videoStream?.profile || 'unknown',
     };
   }
 

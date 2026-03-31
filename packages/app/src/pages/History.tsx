@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
-import { Clock, Download, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Clock, Download, CheckCircle, AlertCircle, Loader2, Instagram, Music2, LayoutGrid, RectangleVertical, Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api';
 import type { Project, RenderResult } from '@clip/shared';
+
+const FORMAT_LABELS: Record<string, { label: string; Icon: typeof Instagram }> = {
+  'reel_9x16': { label: 'Instagram Reels', Icon: Instagram },
+  'tiktok_9x16': { label: 'TikTok', Icon: Music2 },
+  'feed_1x1': { label: 'Feed Quadrado', Icon: LayoutGrid },
+  'feed_4x5': { label: 'Feed Retrato', Icon: RectangleVertical },
+  'story_9x16': { label: 'Stories', Icon: Smartphone },
+};
+
+const QUALITY_LABELS: Record<string, string> = {
+  'draft': 'Rascunho',
+  'standard': 'Padrão',
+  'high': 'Alta Qualidade',
+  'maximum': 'Máxima',
+};
 
 interface RenderWithProject extends RenderResult {
   projectName?: string;
@@ -61,13 +76,17 @@ export function History() {
         </div>
       ) : (
         <div className="space-y-2">
-          {renders.map((r) => (
+          {renders.map((r) => {
+            const fmt = FORMAT_LABELS[r.format];
+            const FormatIcon = fmt?.Icon;
+            return (
             <div key={r.id} className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
               {statusIcon(r.status)}
+              {FormatIcon && <FormatIcon className="h-4 w-4 shrink-0 text-muted-foreground" />}
               <div className="flex-1">
                 <p className="text-sm font-medium">{r.projectName || 'Unknown'}</p>
                 <p className="text-xs text-muted-foreground">
-                  {r.format.replace(/_/g, ' ')} &middot; {r.width}x{r.height} &middot; {r.quality}
+                  {fmt?.label || r.format} &middot; {QUALITY_LABELS[r.quality] || r.quality}
                 </p>
               </div>
               <div className="text-right">
@@ -90,7 +109,8 @@ export function History() {
                 </a>
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
