@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "db:push": "drizzle-kit push",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -30,13 +34,16 @@
     "open": "^10.0.0",
     "pino": "^9.0.0",
     "pino-pretty": "^13.0.0",
-    "remotion": "^4.0.0"
+    "remotion": "^4.0.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "drizzle-kit": "^0.30.0",
     "tsx": "^4.19.0",
-    "typescript": "~5.5.4"
+    "typescript": "~5.5.4",
+    "vitest": "^4.1.2"
   }
 }

@@ -10,6 +10,13 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
     "lint": {
       "dependsOn": ["^build"]
     },
@@ -17,6 +24,9 @@
       "cache": false
     },
     "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
       "cache": false
     }
   }
