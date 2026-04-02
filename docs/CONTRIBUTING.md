@@ -1,479 +1,387 @@
-# Contributing to ClipFlow
+# Contributing to ClipFlow Framework
 
-Thank you for your interest in contributing to ClipFlow. This guide covers the development setup, project conventions, and how to add new features.
+> **Author:** Willian Santos | **License:** MIT | **Version:** 1.0.0
+
+Thank you for your interest in contributing to ClipFlow! This guide covers everything you need to get started — from setting up the development environment to submitting your first pull request.
 
 ---
 
 ## Table of Contents
 
-1. [Development Setup](#1-development-setup)
-2. [Project Structure](#2-project-structure)
-3. [Code Style](#3-code-style)
-4. [Adding a New Route](#4-adding-a-new-route)
-5. [Adding a New Component](#5-adding-a-new-component)
-6. [Adding Translations](#6-adding-translations)
-7. [Database Changes](#7-database-changes)
-8. [Commit Convention](#8-commit-convention)
-9. [Testing](#9-testing)
+- [Code of Conduct](#code-of-conduct)
+- [How to Contribute](#how-to-contribute)
+- [Development Setup](#development-setup)
+- [Project Structure](#project-structure)
+- [Code Style & Standards](#code-style--standards)
+- [Commit Messages](#commit-messages)
+- [Pull Request Process](#pull-request-process)
+- [Reporting Bugs](#reporting-bugs)
+- [Requesting Features](#requesting-features)
+- [Working with the Monorepo](#working-with-the-monorepo)
 
 ---
 
-## 1. Development Setup
+## Code of Conduct
+
+This project follows a simple principle: **be respectful, be constructive, be helpful.**
+
+- Treat everyone with courtesy and respect.
+- Provide constructive feedback on PRs and issues.
+- Focus on the code and ideas, not the person.
+- Harassment, hate speech, or personal attacks will not be tolerated.
+
+---
+
+## How to Contribute
+
+There are many ways to contribute:
+
+| Type | How |
+|------|-----|
+| 🐛 **Bug Fix** | Open an issue → fork → fix → PR |
+| ✨ **New Feature** | Open a feature request issue first → discuss → implement |
+| 📖 **Documentation** | Edit any `docs/*.md` or `README.md` |
+| 🌍 **Translation** | Add a new locale in `packages/app/src/i18n/` |
+| 🧪 **Tests** | Add tests in `packages/*/src/__tests__/` |
+| 🧹 **Refactoring** | Clean up code quality issues (open an issue first) |
+
+---
+
+## Development Setup
+
+### Prerequisites
+
+| Tool | Version | Install |
+|------|---------|---------|
+| Node.js | 22+ | [nodejs.org](https://nodejs.org) |
+| pnpm | 9+ | `npm install -g pnpm` |
+| Python | 3.10+ | [python.org](https://python.org) (optional — for WhisperX) |
+| Git | Any | [git-scm.com](https://git-scm.com) |
+
+### 1. Fork and Clone
 
 ```bash
-# Clone the repository
-git clone https://github.com/willianfellipe-coder/clipflow-framework.git
-cd clipflow-framework
+# Fork the repository via GitHub UI, then:
+git clone https://github.com/<your-username>/clipflow-framework-editor.git
+cd clipflow-framework-editor
 
-# Install dependencies
+# Add the upstream remote
+git remote add upstream https://github.com/willianfellipe-coder/clipflow-framework-editor.git
+```
+
+### 2. Install Dependencies
+
+```bash
 pnpm install
+```
 
-# Set up environment
+### 3. Configure Environment
+
+```bash
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Add ANTHROPIC_API_KEY to .env (required for AI features)
+```
 
-# Set up WhisperX (optional, needed for transcription)
+### 4. Setup WhisperX (Optional)
+
+```bash
 bash scripts/setup.sh
+```
 
-# Start development servers
+### 5. Start Development
+
+```bash
 pnpm dev
 ```
 
-This starts all packages in parallel via Turborepo:
-- **Server** at `http://localhost:4400` (Fastify API with hot reload)
-- **App** at `http://localhost:4401` (Vite dev server with HMR)
-- **API docs** at `http://localhost:4400/docs` (Swagger UI)
-
-The browser opens automatically when the dev server is ready.
+| Service | URL |
+|---------|-----|
+| App | http://localhost:4401 |
+| API | http://localhost:4400 |
+| Swagger | http://localhost:4400/docs |
 
 ---
 
-## 2. Project Structure
+## Project Structure
 
-ClipFlow is a pnpm monorepo managed by Turborepo. There are 5 packages:
+This is a **pnpm monorepo** with Turborepo. Each package is independent but shares types via `@clip/shared`.
 
 ```
 packages/
-  shared/     @clip/shared    Types, Zod schemas, constants (formats, presets, niches)
-  server/     @clip/server    Fastify API server, SQLite database, services
-  app/        @clip/app       React frontend (Vite + Tailwind CSS + Zustand)
-  remotion/   @clip/remotion  Video compositions and caption animations
-  mcp/        @clip/mcp       MCP server for IDE integration (7 tools)
+├── app/        Frontend (React 19, Vite 6, Tailwind CSS 4)
+├── server/     Backend API (Fastify 5, SQLite, Drizzle ORM)
+├── shared/     Shared TypeScript types and Zod schemas
+├── remotion/   Video compositions and caption animations
+└── mcp/        MCP server for IDE integration
 ```
 
-### Package dependency graph
+### Running a Single Package
 
-```
-shared  <--  server
-  ^           ^
-  |           |
-  +---  app   |
-  |           |
-  +-- remotion|
-  |           |
-  +---  mcp --+
-```
+```bash
+# Run only the server
+pnpm --filter @clip/server dev
 
-`@clip/shared` is imported by all other packages. It contains no runtime dependencies -- only TypeScript types, Zod validation schemas, and constant definitions.
+# Run only the frontend
+pnpm --filter @clip/app dev
 
-### Key directories
-
-```
-packages/server/src/
-  config.ts          Server configuration and paths
-  index.ts           Entry point -- registers plugins and routes
-  db/
-    schema.ts        Drizzle ORM table definitions
-    index.ts         Database initialization
-    seed.ts          Seed data (built-in templates, presets)
-  plugins/
-    cors.ts          CORS configuration
-    websocket.ts     WebSocket plugin
-    swagger.ts       Swagger/OpenAPI docs
-    static.ts        Static file serving
-  routes/
-    projects.ts      CRUD for projects
-    upload.ts        Video upload handling
-    transcription.ts Transcription endpoints
-    analysis.ts      AI analysis endpoints
-    scenes.ts        Scene management
-    captions.ts      Caption style endpoints
-    templates.ts     Template CRUD
-    render.ts        Export/render endpoints
-    batch.ts         Batch processing endpoints
-    clips.ts         ClipGen endpoints
-    settings.ts      Settings + health check + system check
-  services/
-    ffmpeg.service.ts    FFmpeg operations (metadata, audio extraction, thumbnails)
-    whisper.service.ts   WhisperX Python sidecar integration
-    claude.service.ts    Anthropic API calls
-    remotion.service.ts  Remotion rendering
-    batch.service.ts     Batch job orchestration
-    clipgen.service.ts   ClipGen AI analysis
-
-packages/app/src/
-  App.tsx            Router configuration
-  main.tsx           Entry point
-  components/
-    layout/          MainLayout, Sidebar, Header
-    upload/          DropZone, UploadProgress, VideoMetadataCard
-    editor/          ScenePanel, SceneCard, AnalysisProgress
-    preview/         VideoPreview (Remotion player)
-    timeline/        TimelineEditor, TimelineRuler, SceneClip, CaptionTrack
-    captions/        CaptionEditor, CaptionStylePicker, WordTimingAdjust
-    template/        NicheSelector, TemplateCard, TemplatePreview, TemplateCreateForm
-    export/          ExportDialog, FormatSelector, QualitySettings, RenderProgress
-    batch/           BatchJobCard
-    clipgen/         ClipGenConfig, ClipCard
-    common/          StatusBadge, ProgressRing
-  pages/
-    Dashboard.tsx    Upload + recent projects
-    Editor.tsx       Main editing interface
-    ClipGen.tsx      Viral clip extraction
-    Templates.tsx    Template gallery
-    BatchJobs.tsx    Batch processing
-    Settings.tsx     App configuration
-    History.tsx      Past renders
-  stores/
-    projectStore.ts  Zustand store for project state
-    settingsStore.ts Zustand store for app settings
-  locales/
-    en.json          English translations
-    pt-BR.json       Portuguese translations
-  lib/
-    api.ts           HTTP client for server API
-    ws.ts            WebSocket client
-    utils.ts         Utility functions (cn, etc.)
-  hooks/
-    useWebSocket.ts  WebSocket React hook
+# Build a single package
+pnpm --filter @clip/shared build
 ```
 
 ---
 
-## 3. Code Style
+## Code Style & Standards
 
 ### TypeScript
 
-- **Strict mode** is enabled across all packages (`tsconfig.base.json`).
-- Use explicit types for function parameters and return values in service code.
+- **All code must be TypeScript.** No plain `.js` files in `packages/`.
+- Use explicit types for function signatures (avoid `any`).
 - Prefer `interface` over `type` for object shapes.
-- Use Zod schemas (in `@clip/shared`) for runtime validation of API inputs.
+- Use `unknown` instead of `any` for truly unknown values.
 
-### Frontend (React)
+### React (Frontend)
 
-- **Tailwind CSS 4** for all styling. No CSS modules or styled-components.
-- Use the `cn()` utility (from `lib/utils.ts`, based on `clsx` + `tailwind-merge`) to conditionally combine class names:
-  ```tsx
-  <div className={cn('p-4 rounded-lg', isActive && 'bg-blue-500')}>
-  ```
-- **Zustand 5** for state management. Stores are in `stores/` and use the immer middleware for immutable updates.
-- React Router for navigation. Routes are defined in `App.tsx`.
-- Use `lucide-react` for icons.
+- Use **functional components** only — no class components.
+- Prefer **named exports** over default exports for components.
+- Keep components focused: one responsibility per component.
+- Use `React.memo()` for components that re-render frequently.
 
-### Backend (Fastify)
+### Fastify (Backend)
 
-- Routes are registered as **Fastify plugins** (async functions that receive a `FastifyInstance`).
-- All routes are prefixed with `/api/`.
-- Use Drizzle ORM for database queries (no raw SQL).
-- Use pino (via Fastify's built-in logger) for logging.
-- WebSocket messages follow the types defined in `@clip/shared`.
+- All routes must have a **Zod schema** for request validation.
+- Services stay in `packages/server/src/services/`.
+- Routes stay in `packages/server/src/routes/`.
+- Never put business logic directly in route handlers.
 
-### General conventions
+### Naming Conventions
 
-- File names use **camelCase** for TypeScript files and **PascalCase** for React components.
-- Add `cursor-pointer` to all clickable elements in Tailwind classes.
-- Add `aria-label` attributes to interactive elements for accessibility.
-- Keep components focused -- if a component exceeds ~200 lines, consider splitting it.
+| Type | Convention | Example |
+|------|-----------|---------|
+| Components | PascalCase | `VideoPreview.tsx` |
+| Hooks | camelCase with `use` | `useWebSocket.ts` |
+| Services | camelCase with `.service` | `ffmpeg.service.ts` |
+| Types/Interfaces | PascalCase | `TranscriptionResult` |
+| Constants | UPPER_SNAKE_CASE | `MAX_UPLOAD_SIZE` |
+| CSS classes | BEM or Tailwind utilities | — |
 
----
+### Linting
 
-## 4. Adding a New Route
+```bash
+# Lint all packages
+pnpm lint
 
-### Step 1: Define types in shared
-
-If the route handles new data shapes, add types to the appropriate file in `packages/shared/src/types/`:
-
-```typescript
-// packages/shared/src/types/myFeature.ts
-export interface MyFeature {
-  id: string;
-  name: string;
-  createdAt: Date;
-}
-
-export interface CreateMyFeatureInput {
-  name: string;
-}
-```
-
-Export the new types from the shared package index.
-
-### Step 2: Create the route file
-
-Create a new file in `packages/server/src/routes/`:
-
-```typescript
-// packages/server/src/routes/myFeature.ts
-import type { FastifyInstance } from 'fastify';
-import { db } from '../db/index.js';
-
-export async function myFeatureRoutes(app: FastifyInstance) {
-  // GET /api/my-feature
-  app.get('/api/my-feature', async (request, reply) => {
-    // Implementation
-  });
-
-  // POST /api/my-feature
-  app.post<{ Body: CreateMyFeatureInput }>('/api/my-feature', async (request, reply) => {
-    // Implementation
-  });
-}
-```
-
-### Step 3: Register the route
-
-Add the import and registration in `packages/server/src/index.ts`:
-
-```typescript
-import { myFeatureRoutes } from './routes/myFeature.js';
-
-// Inside the start() function, with the other route registrations:
-await app.register(myFeatureRoutes);
+# Fix auto-fixable issues
+pnpm lint --fix
 ```
 
 ---
 
-## 5. Adding a New Component
+## Commit Messages
 
-### Step 1: Choose the right directory
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
-Place the component in the appropriate subdirectory of `packages/app/src/components/`:
+### Format
 
-| Directory | For |
-|-----------|-----|
-| `layout/` | Shell components (sidebar, header, layout wrappers) |
-| `upload/` | Upload-related UI |
-| `editor/` | Scene management, analysis UI |
-| `preview/` | Video preview / Remotion player |
-| `timeline/` | Timeline tracks, ruler, clips |
-| `captions/` | Caption editing and styling |
-| `template/` | Template gallery, creation, preview |
-| `export/` | Export dialog, format selection, render progress |
-| `batch/` | Batch job UI |
-| `clipgen/` | ClipGen configuration and clip cards |
-| `common/` | Reusable UI elements (badges, progress indicators) |
+```
+<type>(<scope>): <short summary>
 
-### Step 2: Write the component
+[optional body]
 
-```tsx
-// packages/app/src/components/mydir/MyComponent.tsx
-import { cn } from '../../lib/utils';
-
-interface MyComponentProps {
-  title: string;
-  isActive?: boolean;
-  onClick?: () => void;
-}
-
-export function MyComponent({ title, isActive, onClick }: MyComponentProps) {
-  return (
-    <button
-      className={cn(
-        'px-4 py-2 rounded-lg cursor-pointer transition-colors',
-        isActive ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'
-      )}
-      onClick={onClick}
-      aria-label={title}
-    >
-      {title}
-    </button>
-  );
-}
+[optional footer]
 ```
 
-Key points:
-- Use `cn()` for conditional class merging.
-- Add `cursor-pointer` to clickable elements.
-- Add `aria-label` for accessibility.
-- Export the component as a named export (not default).
-- Define props with an `interface`.
+### Types
 
----
+| Type | When to Use |
+|------|-------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `style` | Formatting, missing semicolons (no logic change) |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `perf` | Performance improvement |
+| `test` | Adding or fixing tests |
+| `chore` | Build system, dependencies, CI config |
 
-## 6. Adding Translations
+### Scopes
 
-ClipFlow supports English and Portuguese (pt-BR). When adding new user-facing text, you must add keys to both locale files.
-
-### Locale files
-
-- `packages/app/src/locales/en.json` -- English
-- `packages/app/src/locales/pt-BR.json` -- Portuguese (Brazil)
-
-### Steps
-
-1. Add the key to the appropriate section in `en.json`:
-   ```json
-   {
-     "myFeature": {
-       "title": "My Feature",
-       "description": "This does something useful"
-     }
-   }
-   ```
-
-2. Add the same key with a Portuguese translation in `pt-BR.json`:
-   ```json
-   {
-     "myFeature": {
-       "title": "Meu Recurso",
-       "description": "Isso faz algo util"
-     }
-   }
-   ```
-
-3. Use the translation key in your component via the i18n system.
-
-### Rules
-
-- **Always add keys to both files.** Missing keys in one file will cause the raw key string to display.
-- Use interpolation for dynamic values: `"Used {{count}} times"`.
-- Group keys by feature or page (e.g., `dashboard.*`, `editor.*`, `templates.*`).
-
----
-
-## 7. Database Changes
-
-ClipFlow uses SQLite via Drizzle ORM. The schema is defined in code, not migration files.
-
-### Step 1: Update the schema
-
-Edit `packages/server/src/db/schema.ts` to add or modify tables:
-
-```typescript
-export const myFeatures = sqliteTable('my_features', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  projectId: text('project_id').references(() => projects.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
-```
-
-### Step 2: Update database initialization
-
-Edit `packages/server/src/db/index.ts` and add the `CREATE TABLE IF NOT EXISTS` statement in the `initializeDatabase()` function. This ensures the table is created on server startup if it does not already exist.
-
-```typescript
-export function initializeDatabase() {
-  // ... existing tables ...
-
-  db.run(sql`
-    CREATE TABLE IF NOT EXISTS my_features (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      project_id TEXT REFERENCES projects(id),
-      created_at INTEGER NOT NULL
-    )
-  `);
-}
-```
-
-### Step 3: Seed data (optional)
-
-If your feature needs default/built-in data, add seed logic in `packages/server/src/db/seed.ts`.
-
-### Important notes
-
-- Column names in the schema use **camelCase** in TypeScript but **snake_case** in the database (Drizzle handles the mapping via the string argument in column definitions).
-- Use `text('id').primaryKey()` with nanoid for IDs.
-- Use `integer('...', { mode: 'timestamp' })` for date columns.
-- Use `text('...').references(() => otherTable.id)` for foreign keys.
-- Store JSON data as `text` columns and parse/stringify in the service layer.
-
----
-
-## 8. Commit Convention
-
-Use conventional commit prefixes for all commit messages:
-
-| Prefix | Use for |
-|--------|---------|
-| `feat:` | New features or capabilities |
-| `fix:` | Bug fixes |
-| `style:` | UI/CSS changes, code formatting (no logic changes) |
-| `docs:` | Documentation changes |
-| `refactor:` | Code restructuring without changing behavior |
-| `perf:` | Performance improvements |
-| `chore:` | Build config, dependencies, tooling changes |
+Use the package name as scope: `app`, `server`, `shared`, `remotion`, `mcp`.
 
 ### Examples
 
 ```
-feat: add speaker diarization toggle to settings page
-fix: prevent crash when transcription returns empty segments
-style: align export dialog buttons on mobile viewports
-docs: add deployment guide for production servers
-refactor: extract ffmpeg operations into dedicated service
-chore: upgrade Remotion to 4.x
+feat(server): add pagination to projects list endpoint
+fix(app): prevent timeline crash with empty captions
+docs(contributing): add monorepo working guide
+perf(remotion): memoize word-visibility calculations in captions
+chore: upgrade pnpm to 9.15.4
 ```
-
-### Guidelines
-
-- Keep the subject line under 72 characters.
-- Use imperative mood ("add", "fix", "update", not "added", "fixed", "updated").
-- Reference issue numbers when applicable: `fix: handle empty transcription (#42)`.
 
 ---
 
-## 9. Testing
+## Pull Request Process
 
-ClipFlow currently uses manual testing. Here is the recommended workflow:
+### Before Opening a PR
 
-### Start the development environment
-
-```bash
-pnpm dev
-```
-
-This starts both the server and frontend with hot reload.
-
-### Test API endpoints with curl
+1. ✅ **Check existing issues** — your change may already be tracked.
+2. ✅ **For large features** — open a Feature Request issue first to discuss the approach before coding.
+3. ✅ **Keep PRs small** — one logical change per PR is much easier to review.
+4. ✅ **Sync with upstream** before branching:
 
 ```bash
-# Health check
-curl http://localhost:4400/api/health
-
-# System check
-curl http://localhost:4400/api/settings/system-check
-
-# List projects
-curl http://localhost:4400/api/projects
-
-# List templates
-curl http://localhost:4400/api/templates
-
-# Get settings
-curl http://localhost:4400/api/settings
+git fetch upstream
+git checkout main
+git merge upstream/main
 ```
 
-### Test a full workflow
+### Branching
 
-1. **Upload** -- Drag a video onto the Dashboard upload zone.
-2. **Transcribe** -- Open the project in the Editor and click Transcribe.
-3. **Analyze** -- After transcription completes, click "Analyze with AI".
-4. **Edit** -- Verify scenes appear in the Scene Panel and Timeline.
-5. **Captions** -- Switch caption styles and confirm the preview updates.
-6. **Template** -- Go to Templates, apply one, return to the Editor and verify settings applied.
-7. **Export** -- Open the Export dialog, select a format, render, and download.
-8. **ClipGen** -- Navigate to ClipGen, configure and run analysis, verify clip suggestions.
-9. **Batch** -- Create a batch job with multiple videos, start it, verify progress.
+```bash
+# Features
+git checkout -b feat/your-feature-name
 
-### Swagger UI
+# Bug fixes
+git checkout -b fix/describe-the-bug
 
-For interactive API exploration, open `http://localhost:4400/docs` in your browser. All endpoints are documented with request/response schemas.
+# Documentation
+git checkout -b docs/what-you-updated
+```
 
-### Tips
+### PR Checklist
 
-- Check the browser console for frontend errors.
-- Check the server terminal for backend errors (pino logs).
-- WebSocket connection status is shown in the sidebar (Connected/Disconnected).
-- If transcription fails, verify WhisperX is set up correctly with `curl http://localhost:4400/api/settings/system-check`.
+Before submitting, make sure:
+
+- [ ] The code builds without errors: `pnpm build`
+- [ ] TypeScript has no type errors: `pnpm --filter <package> tsc --noEmit`
+- [ ] Linting passes: `pnpm lint`
+- [ ] You've tested the change manually (describe how in the PR)
+- [ ] The PR description explains **what** and **why** (not just how)
+- [ ] Documentation is updated if the change affects user-facing behavior
+
+### PR Description Template
+
+```markdown
+## What does this PR do?
+<!-- Clear description of the change -->
+
+## Why is this change needed?
+<!-- Context, motivation, or link to issue -->
+
+## How was it tested?
+<!-- Manual steps you followed -->
+
+## Screenshots (if UI change)
+<!-- Before / After screenshots -->
+
+## Related Issues
+<!-- Closes #123 -->
+```
+
+---
+
+## Reporting Bugs
+
+Before opening a bug report:
+
+1. Search [existing issues](https://github.com/willianfellipe-coder/clipflow-framework-editor/issues) — it may already be reported.
+2. Check [CHANGELOG.md](../CHANGELOG.md) — it may be fixed in a newer version.
+
+### Bug Report Template
+
+```markdown
+**Describe the Bug**
+A clear description of what the bug is.
+
+**Steps to Reproduce**
+1. Go to '...'
+2. Click on '...'
+3. See error
+
+**Expected Behavior**
+What you expected to happen.
+
+**Actual Behavior**
+What actually happened.
+
+**Environment**
+- OS: [e.g. macOS 15, Windows 11, Ubuntu 24.04]
+- Node.js version: [e.g. 22.4.0]
+- pnpm version: [e.g. 9.15.4]
+- ClipFlow version: [e.g. 1.0.0]
+
+**Additional Context**
+Logs, screenshots, or any other relevant information.
+```
+
+---
+
+## Requesting Features
+
+Feature requests are welcome! Open an issue with the title format:
+
+```
+[Feature Request] Brief description of the feature
+```
+
+Describe:
+- **What** the feature does
+- **Why** it would be useful
+- **Who** would benefit from it
+- Any **implementation ideas** you have (optional)
+
+Large features may require discussion before implementation starts. The maintainer will label promising requests and link them to milestones.
+
+---
+
+## Working with the Monorepo
+
+### Turborepo Pipeline
+
+The build pipeline is defined in `turbo.json`. Tasks are run in dependency order:
+
+```bash
+pnpm build        # Build all packages (shared → server/app/remotion/mcp)
+pnpm dev          # Start all packages in dev mode (parallel)
+pnpm lint         # Lint all packages
+pnpm db:push      # Push Drizzle schema to SQLite (server only)
+pnpm db:generate  # Generate Drizzle migration files (server only)
+```
+
+### Adding a New Dependency
+
+```bash
+# Add to a specific package
+pnpm --filter @clip/server add package-name
+pnpm --filter @clip/app add -D dev-package-name
+
+# Add to the root workspace
+pnpm add -w -D root-dev-package
+```
+
+### Adding a Shared Type
+
+1. Create or edit a file in `packages/shared/src/types/`
+2. Export it from `packages/shared/src/index.ts`
+3. Build shared: `pnpm --filter @clip/shared build`
+4. Import in other packages: `import { YourType } from '@clip/shared'`
+
+### Adding an API Route
+
+1. Create `packages/server/src/routes/your-route.ts`
+2. Define the Fastify route with a Zod schema
+3. Register it in `packages/server/src/index.ts`
+4. Add corresponding types to `@clip/shared` if needed
+5. Document it in `docs/API.md`
+
+---
+
+## Questions?
+
+If you have questions that aren't answered here:
+
+- Open a [Discussion](https://github.com/willianfellipe-coder/clipflow-framework-editor/discussions) for general questions
+- Open an [Issue](https://github.com/willianfellipe-coder/clipflow-framework-editor/issues) for bugs or feature requests
+
+---
+
+*Thank you for contributing to ClipFlow! Every improvement — big or small — makes a difference.* 🎬

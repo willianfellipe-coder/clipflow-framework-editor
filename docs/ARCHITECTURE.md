@@ -1,5 +1,7 @@
 # ClipFlow Architecture
 
+> **Author:** Willian Santos &nbsp;|&nbsp; **Project:** [ClipFlow Framework](https://github.com/willianfellipe-coder/clipflow-framework-editor) &nbsp;|&nbsp; **License:** MIT
+
 ## 1. Monorepo Structure
 
 ClipFlow is a pnpm workspace monorepo managed by Turborepo with 5 packages:

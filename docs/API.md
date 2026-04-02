@@ -1,5 +1,7 @@
 # ClipFlow API Reference
 
+> **Author:** Willian Santos &nbsp;|&nbsp; **Project:** [ClipFlow Framework](https://github.com/willianfellipe-coder/clipflow-framework-editor) &nbsp;|&nbsp; **License:** MIT
+
 Base URL: `http://localhost:4400`
 
 All endpoints return JSON. Asynchronous operations (transcription, analysis, render) return `202 Accepted` and broadcast progress via WebSocket.

@@ -1,5 +1,7 @@
 # ClipFlow User Guide
 
+> **Author:** Willian Santos &nbsp;|&nbsp; **Project:** [ClipFlow Framework](https://github.com/willianfellipe-coder/clipflow-framework-editor) &nbsp;|&nbsp; **License:** MIT
+
 This guide walks you through every feature of ClipFlow, from uploading your first video to exporting polished short-form content.
 
 ---

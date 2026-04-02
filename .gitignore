@@ -1,14 +1,53 @@
+# ── Dependencies ─────────────────────────────────────
 node_modules/
+.pnpm-store/
+
+# ── Build Outputs ────────────────────────────────────
 dist/
+build/
+out/
+.next/
+
+# ── Turborepo ────────────────────────────────────────
 .turbo/
+
+# ── Local Data & Database ────────────────────────────
 data/
 *.db
 *.db-journal
 *.db-wal
+*.db-shm
+
+# ── Environment Variables ─────────────────────────────
 .env
 .env.local
-.DS_Store
-*.log
+.env.*.local
+
+# ── AI / Agent Files (Internal Use) ──────────────────
 .agent/
-whisper/.venv/
+.claude/
+_private/
+
+# ── OS & Editor ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+
+# ── Logs & Debug ────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
 lint_output.json
+
+# ── Python Sidecar ───────────────────────────────────
+whisper/.venv/
+whisper/__pycache__/
+whisper/*.pyc
+*.pyc
+__pycache__/
+
+# ── Misc ─────────────────────────────────────────────
+*.tgz
+*.tar.gz
+.cache/

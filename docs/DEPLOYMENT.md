@@ -1,5 +1,7 @@
 # ClipFlow Deployment Guide
 
+> **Author:** Willian Santos &nbsp;|&nbsp; **Project:** [ClipFlow Framework](https://github.com/willianfellipe-coder/clipflow-framework-editor) &nbsp;|&nbsp; **License:** MIT
+
 This guide covers everything needed to deploy ClipFlow in a production environment.
 
 ---
@@ -51,8 +53,8 @@ For Chromium, ensure one of these paths exists (or install Chrome/Chromium):
 
 ```bash
 # Clone the repository
-git clone https://github.com/willianfellipe-coder/clipflow-framework.git
-cd clipflow-framework
+git clone https://github.com/willianfellipe-coder/clipflow-framework-editor.git
+cd clipflow-framework-editor
 
 # Install all dependencies (monorepo-wide)
 pnpm install
