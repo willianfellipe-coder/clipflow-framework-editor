@@ -5,7 +5,7 @@ const styles: { id: CaptionAnimation; label: string; preview: string; color: str
   { id: 'word-highlight', label: 'Highlight', preview: 'The active word glows', color: 'text-yellow-400' },
   { id: 'karaoke', label: 'Karaoke', preview: 'Fill reveals left to right', color: 'text-red-400' },
   { id: 'pop', label: 'Pop', preview: 'Words bounce in', color: 'text-green-400' },
-  { id: 'glow', label: 'Glow', preview: 'Neon glow effect', color: 'text-purple-400' },
+  { id: 'glow', label: 'Glow', preview: 'Neon glow effect', color: 'text-emerald-400' },
   { id: 'none', label: 'None', preview: 'Static text', color: 'text-zinc-400' },
 ];
 

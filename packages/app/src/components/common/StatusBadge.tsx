@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 const statusStyles: Record<string, string> = {
   draft: 'bg-zinc-700 text-zinc-300',
   transcribing: 'bg-blue-900 text-blue-300',
-  analyzing: 'bg-purple-900 text-purple-300',
+  analyzing: 'bg-teal-900 text-teal-300',
   editing: 'bg-yellow-900 text-yellow-300',
   rendering: 'bg-orange-900 text-orange-300',
   done: 'bg-emerald-900 text-emerald-300',

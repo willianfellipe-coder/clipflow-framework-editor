@@ -4,7 +4,7 @@ const typeColors: Record<string, string> = {
   hook: 'bg-red-500/30 border-red-500/50 text-red-300',
   content: 'bg-blue-500/30 border-blue-500/50 text-blue-300',
   transition: 'bg-yellow-500/30 border-yellow-500/50 text-yellow-300',
-  broll: 'bg-purple-500/30 border-purple-500/50 text-purple-300',
+  broll: 'bg-teal-500/30 border-teal-500/50 text-teal-300',
   cta: 'bg-emerald-500/30 border-emerald-500/50 text-emerald-300',
   outro: 'bg-zinc-500/30 border-zinc-500/50 text-zinc-300',
 };
