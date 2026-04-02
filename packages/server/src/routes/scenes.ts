@@ -30,26 +30,28 @@ export async function sceneRoutes(app: FastifyInstance) {
 
     const now = new Date();
 
-    // Delete existing scenes
-    db.delete(scenes).where(eq(scenes.projectId, project.id)).run();
+    // DAT-003: Use transaction — delete + insert must be atomic.
+    // If insert fails mid-way, the delete is rolled back so the project keeps its scenes.
+    db.transaction((tx) => {
+      tx.delete(scenes).where(eq(scenes.projectId, project.id)).run();
 
-    // Insert new scenes
-    for (const scene of request.body.scenes) {
-      db.insert(scenes).values({
-        id: nanoid(),
-        projectId: project.id,
-        order: scene.order,
-        startTime: scene.startTime,
-        endTime: scene.endTime,
-        type: scene.type as 'hook' | 'content' | 'transition' | 'broll' | 'cta' | 'outro',
-        description: scene.description || null,
-        effects: scene.effects ? JSON.stringify(scene.effects) : null,
-        transitionIn: scene.transitionIn || 'cut',
-        transitionOut: scene.transitionOut || 'cut',
-        isActive: true,
-        createdAt: now,
-      }).run();
-    }
+      for (const scene of request.body.scenes) {
+        tx.insert(scenes).values({
+          id: nanoid(),
+          projectId: project.id,
+          order: scene.order,
+          startTime: scene.startTime,
+          endTime: scene.endTime,
+          type: scene.type as 'hook' | 'content' | 'transition' | 'broll' | 'cta' | 'outro',
+          description: scene.description || null,
+          effects: scene.effects ? JSON.stringify(scene.effects) : null,
+          transitionIn: scene.transitionIn || 'cut',
+          transitionOut: scene.transitionOut || 'cut',
+          isActive: true,
+          createdAt: now,
+        }).run();
+      }
+    });
 
     return db.select().from(scenes)
       .where(eq(scenes.projectId, project.id))

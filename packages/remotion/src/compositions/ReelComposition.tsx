@@ -82,8 +82,8 @@ export const ReelComposition: React.FC<ReelProps> = ({
         />
       )}
 
-      {/* Caption layer */}
-      {CaptionComponent && captions.length > 0 && (
+      {/* Caption layer — BUG-002: guard against null when captionAnimation === 'none' */}
+      {CaptionComponent != null && captions.length > 0 && (
         <AbsoluteFill>
           <CaptionComponent words={captions} style={captionStyle} />
         </AbsoluteFill>

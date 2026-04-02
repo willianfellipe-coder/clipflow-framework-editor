@@ -30,7 +30,7 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS transcriptions (
       id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL REFERENCES projects(id),
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       model TEXT NOT NULL DEFAULT 'large-v3',
       language TEXT,
       full_text TEXT NOT NULL,
@@ -44,8 +44,8 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS analyses (
       id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL REFERENCES projects(id),
-      transcription_id TEXT NOT NULL REFERENCES transcriptions(id),
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      transcription_id TEXT NOT NULL REFERENCES transcriptions(id) ON DELETE CASCADE,
       model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
       prompt TEXT NOT NULL,
       response TEXT NOT NULL,
@@ -61,8 +61,8 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS scenes (
       id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL REFERENCES projects(id),
-      analysis_id TEXT REFERENCES analyses(id),
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      analysis_id TEXT REFERENCES analyses(id) ON DELETE SET NULL,
       "order" INTEGER NOT NULL,
       start_time REAL NOT NULL,
       end_time REAL NOT NULL,
@@ -123,7 +123,7 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS renders (
       id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL REFERENCES projects(id),
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       format TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'queued',
       output_path TEXT,
@@ -158,8 +158,8 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS batch_items (
       id TEXT PRIMARY KEY,
-      batch_job_id TEXT NOT NULL REFERENCES batch_jobs(id),
-      project_id TEXT REFERENCES projects(id),
+      batch_job_id TEXT NOT NULL REFERENCES batch_jobs(id) ON DELETE CASCADE,
+      project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
       source_video_path TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       error_message TEXT,
@@ -176,8 +176,8 @@ export function initializeDatabase() {
     -- ClipGen tables
     CREATE TABLE IF NOT EXISTS clip_analyses (
       id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL REFERENCES projects(id),
-      transcription_id TEXT REFERENCES transcriptions(id),
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      transcription_id TEXT REFERENCES transcriptions(id) ON DELETE SET NULL,
       target_duration INTEGER NOT NULL DEFAULT 30,
       number_of_clips INTEGER NOT NULL DEFAULT 5,
       target_platform TEXT NOT NULL DEFAULT 'tiktok',
@@ -196,8 +196,8 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS clips (
       id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL REFERENCES projects(id),
-      analysis_id TEXT REFERENCES clip_analyses(id),
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      analysis_id TEXT REFERENCES clip_analyses(id) ON DELETE SET NULL,
       start_time REAL NOT NULL,
       end_time REAL NOT NULL,
       title TEXT NOT NULL DEFAULT 'Untitled Clip',
@@ -206,7 +206,7 @@ export function initializeDatabase() {
       emotional_tone TEXT NOT NULL DEFAULT 'neutral',
       suggested_hashtags TEXT,
       ai_reason TEXT,
-      caption_style_id TEXT REFERENCES caption_styles(id),
+      caption_style_id TEXT REFERENCES caption_styles(id) ON DELETE SET NULL,
       caption_animation TEXT NOT NULL DEFAULT 'word-highlight',
       aspect_ratio TEXT NOT NULL DEFAULT '9:16',
       zoom_config TEXT,
@@ -217,7 +217,7 @@ export function initializeDatabase() {
       quality TEXT NOT NULL DEFAULT 'standard',
       output_format TEXT NOT NULL DEFAULT 'mp4',
       target_platform TEXT NOT NULL DEFAULT 'tiktok',
-      render_id TEXT REFERENCES renders(id),
+      render_id TEXT REFERENCES renders(id) ON DELETE SET NULL,
       output_path TEXT,
       thumbnail_path TEXT,
       created_at INTEGER NOT NULL,

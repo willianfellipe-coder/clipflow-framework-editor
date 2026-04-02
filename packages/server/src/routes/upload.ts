@@ -52,6 +52,19 @@ export async function uploadRoutes(app: FastifyInstance) {
       throw new AppError(413, `File too large. Maximum size: 500MB`, 'FILE_TOO_LARGE');
     }
 
+    // SEC-003: Validate magic bytes — reject files with faked MIME/extension
+    const { readFileSync } = await import('fs');
+    const magic = readFileSync(videoPath, { flag: 'r' }).slice(0, 12);
+    const isMP4orMOV = magic[4] === 0x66 && magic[5] === 0x74 && magic[6] === 0x79 && magic[7] === 0x70; // ftyp box
+    const isWebM = magic[0] === 0x1a && magic[1] === 0x45 && magic[2] === 0xdf && magic[3] === 0xa3;      // EBML
+    const isAVI  = magic[0] === 0x52 && magic[1] === 0x49 && magic[2] === 0x46 && magic[3] === 0x46;      // RIFF
+    const isMKV  = magic[0] === 0x1a && magic[1] === 0x45 && magic[2] === 0xdf && magic[3] === 0xa3;      // EBML (same as WebM)
+    if (!isMP4orMOV && !isWebM && !isAVI && !isMKV) {
+      const { unlinkSync } = await import('fs');
+      try { unlinkSync(videoPath); } catch { /* best effort cleanup */ }
+      throw new AppError(400, 'File content does not match a supported video format', 'INVALID_MAGIC_BYTES');
+    }
+
     // Probe video metadata
     let meta;
     try {
