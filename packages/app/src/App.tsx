@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout } from './components/layout/MainLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Dashboard } from './pages/Dashboard';
 import { Editor } from './pages/Editor';
 import { Templates } from './pages/Templates';
@@ -12,13 +13,13 @@ export function App() {
   return (
     <MainLayout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/editor/:projectId?" element={<Editor />} />
-        <Route path="/clipgen/:projectId?" element={<ClipGen />} />
-        <Route path="/templates" element={<Templates />} />
-        <Route path="/batch" element={<BatchJobs />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/history" element={<History />} />
+        <Route path="/" element={<ErrorBoundary fallbackLabel="Dashboard"><Dashboard /></ErrorBoundary>} />
+        <Route path="/editor/:projectId?" element={<ErrorBoundary fallbackLabel="Editor"><Editor /></ErrorBoundary>} />
+        <Route path="/clipgen/:projectId?" element={<ErrorBoundary fallbackLabel="ClipGen"><ClipGen /></ErrorBoundary>} />
+        <Route path="/templates" element={<ErrorBoundary fallbackLabel="Templates"><Templates /></ErrorBoundary>} />
+        <Route path="/batch" element={<ErrorBoundary fallbackLabel="Batch Jobs"><BatchJobs /></ErrorBoundary>} />
+        <Route path="/settings" element={<ErrorBoundary fallbackLabel="Settings"><Settings /></ErrorBoundary>} />
+        <Route path="/history" element={<ErrorBoundary fallbackLabel="History"><History /></ErrorBoundary>} />
       </Routes>
     </MainLayout>
   );

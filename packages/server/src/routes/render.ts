@@ -4,7 +4,7 @@ import { createReadStream, existsSync, statSync } from 'fs';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { projects, renders, scenes, transcriptions } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { FORMAT_CONFIGS } from '@clip/shared';
 import type { ExportFormat, QualityPreset } from '@clip/shared';
 import { PATHS } from '../config.js';
@@ -290,9 +290,11 @@ async function processRender(
       compositionProps,
       quality,
       (progress) => {
-        if (tracker.cancelled) throw new Error('Render cancelled');
-
-        db.update(renders).set({ progress: progress.percent }).where(eq(renders.id, renderId)).run();
+        // DAT-001: Only update progress if still rendering (guard against race with cancel)
+        db.update(renders)
+          .set({ progress: progress.percent })
+          .where(and(eq(renders.id, renderId), eq(renders.status, 'rendering')))
+          .run();
         broadcast('render:progress', {
           renderId,
           percent: progress.percent,
@@ -303,7 +305,7 @@ async function processRender(
       },
     );
 
-    // Update render record
+    // DAT-001: Only mark as done if still in 'rendering' state — prevents overwriting a 'cancelled' status.
     const renderTime = (Date.now() - startTime) / 1000;
     db.update(renders).set({
       status: 'done',
@@ -312,7 +314,7 @@ async function processRender(
       renderTime,
       progress: 100,
       completedAt: new Date(),
-    }).where(eq(renders.id, renderId)).run();
+    }).where(and(eq(renders.id, renderId), eq(renders.status, 'rendering'))).run();
 
     broadcast('render:complete', {
       renderId,

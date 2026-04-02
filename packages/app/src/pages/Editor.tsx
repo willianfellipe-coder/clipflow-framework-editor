@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Film, Download, MessageSquare } from 'lucide-react';
+import { Film, Download, MessageSquare, Undo2, Redo2 } from 'lucide-react';
 import type { PlayerRef } from '@remotion/player';
 import { api } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -34,7 +34,9 @@ export function Editor() {
   const playerRef = useRef<PlayerRef>(null);
 
   const { scenes, selectedSceneId, setSelectedScene, fetchScenes, currentTime, setCurrentTime, isPlaying, setPlaying } = useTimelineStore();
-  const { words, selectedWordIndex, setSelectedWordIndex, captionAnimation, setCaptionAnimation, updateWord, updateWordTiming, fetchCaptions } = useCaptionStore();
+  const { words, selectedWordIndex, setSelectedWordIndex, captionAnimation, setCaptionAnimation, updateWord, updateWordTiming, fetchCaptions, undo, redo, canUndo, canRedo } = useCaptionStore();
+
+  const [hasUnsavedCaptions, setHasUnsavedCaptions] = useState(false);
 
   const [project, setProject] = useState<Project | null>(null);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
@@ -52,6 +54,14 @@ export function Editor() {
   useEffect(() => {
     if (projectId) localStorage.setItem('clipflow:lastEditorProject', projectId);
   }, [projectId]);
+
+  // GAP-012: Warn user about unsaved captions before leaving
+  useEffect(() => {
+    if (!hasUnsavedCaptions) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedCaptions]);
 
   // Load project data
   useEffect(() => {
@@ -138,6 +148,25 @@ export function Editor() {
     if (scene) setCurrentTime(scene.startTime);
   }, [scenes, setSelectedScene, setCurrentTime]);
 
+  const handleUpdateWord = useCallback((index: number, word: string) => {
+    updateWord(index, word);
+    setHasUnsavedCaptions(true);
+  }, [updateWord]);
+
+  const handleUpdateTiming = useCallback((index: number, start: number, end: number) => {
+    updateWordTiming(index, start, end);
+    setHasUnsavedCaptions(true);
+  }, [updateWordTiming]);
+
+  const handleSaveCaptions = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const { saveCaptions } = useCaptionStore.getState();
+      await saveCaptions(projectId);
+      setHasUnsavedCaptions(false);
+    } catch { /* ignore */ }
+  }, [projectId]);
+
   const handleSelectWord = useCallback((index: number) => {
     setSelectedWordIndex(index);
     setInspectorTab('caption');
@@ -157,6 +186,8 @@ export function Editor() {
     },
     onSeekBack: () => handleSeek(Math.max(0, currentTime - 5)),
     onSeekForward: () => handleSeek(currentTime + 5),
+    onUndo: () => undo(),   // GAP-011: Ctrl+Z
+    onRedo: () => redo(),   // GAP-011: Ctrl+Y
   });
 
   const captionWords = useMemo(() =>
@@ -301,8 +332,11 @@ export function Editor() {
             >Scene</button>
             <button
               onClick={() => setInspectorTab('caption')}
-              className={`flex-1 py-1.5 text-xs font-medium ${inspectorTab === 'caption' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
-            >Captions</button>
+              className={`flex-1 py-1.5 text-xs font-medium relative ${inspectorTab === 'caption' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+            >
+              Captions
+              {hasUnsavedCaptions && <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400" title="Unsaved changes" />}
+            </button>
             <button
               onClick={() => setInspectorTab('chat')}
               className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 ${inspectorTab === 'chat' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
@@ -350,14 +384,32 @@ export function Editor() {
                 <p className="text-xs text-muted-foreground">Select a scene</p>
               )
             ) : (
+            <>
               <CaptionEditor
                 words={words}
                 selectedWordIndex={selectedWordIndex}
                 captionAnimation={captionAnimation as any}
-                onUpdateWord={updateWord}
-                onUpdateTiming={updateWordTiming}
+                onUpdateWord={handleUpdateWord}
+                onUpdateTiming={handleUpdateTiming}
                 onAnimationChange={setCaptionAnimation}
               />
+              {/* GAP-011: Undo/Redo controls + Save */}
+              <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-2">
+                <div className="flex gap-1">
+                  <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="rounded p-1 text-muted-foreground hover:bg-secondary disabled:opacity-30">
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="rounded p-1 text-muted-foreground hover:bg-secondary disabled:opacity-30">
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {hasUnsavedCaptions && (
+                  <button onClick={handleSaveCaptions} className="rounded bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground hover:bg-primary/90">
+                    Save
+                  </button>
+                )}
+              </div>
+            </>
             )}
           </div>
           )}

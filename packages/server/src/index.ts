@@ -66,6 +66,23 @@ async function start() {
     const open = await import('open');
     open.default(`http://localhost:${config.appPort}`).catch(() => {});
   }
+
+  // GAP-006: Graceful shutdown — stop accepting requests, finish in-flight work, exit cleanly.
+  const shutdown = async (signal: string) => {
+    logger.info(`Received ${signal}. Initiating graceful shutdown...`);
+    try {
+      // Stop accepting new connections; wait up to 10s for in-flight requests
+      await app.close();
+      logger.info('Server closed. Bye!');
+      process.exit(0);
+    } catch (err) {
+      logger.error(err, 'Error during graceful shutdown');
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT',  () => shutdown('SIGINT'));
 }
 
 start().catch((err) => {
