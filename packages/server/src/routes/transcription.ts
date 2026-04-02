@@ -9,6 +9,7 @@ import { ffmpegService } from '../services/ffmpeg.service.js';
 import { whisperService } from '../services/whisper.service.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
+import { WordTimestampsSchema, SegmentsSchema, parseJsonField } from '../db/validators.js';
 
 export async function transcriptionRoutes(app: FastifyInstance) {
   // Trigger transcription
@@ -58,8 +59,8 @@ export async function transcriptionRoutes(app: FastifyInstance) {
     const latest = rows[rows.length - 1];
     return {
       ...latest,
-      wordTimestamps: JSON.parse(latest.wordTimestamps),
-      segments: JSON.parse(latest.segments),
+      wordTimestamps: parseJsonField(WordTimestampsSchema, latest.wordTimestamps, []),
+      segments: parseJsonField(SegmentsSchema, latest.segments, []),
     };
   });
 }

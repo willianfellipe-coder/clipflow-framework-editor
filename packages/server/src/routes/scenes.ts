@@ -4,6 +4,8 @@ import { db } from '../db/index.js';
 import { scenes, projects } from '../db/schema.js';
 import { eq, asc } from 'drizzle-orm';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, ZoomConfigSchema } from '../db/validators.js';
+import { z } from 'zod';
 
 export async function sceneRoutes(app: FastifyInstance) {
   // List scenes for a project
@@ -15,8 +17,8 @@ export async function sceneRoutes(app: FastifyInstance) {
 
     return rows.map((r) => ({
       ...r,
-      effects: r.effects ? JSON.parse(r.effects) : [],
-      zoomConfig: r.zoomConfig ? JSON.parse(r.zoomConfig) : null,
+      effects: parseJsonField(z.array(z.string()), r.effects, []),
+      zoomConfig: parseJsonField(ZoomConfigSchema, r.zoomConfig, null),
     }));
   });
 
@@ -88,8 +90,8 @@ export async function sceneRoutes(app: FastifyInstance) {
     const updated = db.select().from(scenes).where(eq(scenes.id, request.params.sid)).get();
     return {
       ...updated,
-      effects: updated!.effects ? JSON.parse(updated!.effects) : [],
-      zoomConfig: updated!.zoomConfig ? JSON.parse(updated!.zoomConfig) : null,
+      effects: parseJsonField(z.array(z.string()), updated!.effects, []),
+      zoomConfig: parseJsonField(ZoomConfigSchema, updated!.zoomConfig, null),
     };
   });
 

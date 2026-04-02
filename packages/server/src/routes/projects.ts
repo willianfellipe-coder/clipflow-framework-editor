@@ -4,6 +4,8 @@ import { projects, templates, scenes } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, CTAConfigSchema, LayoutConfigSchema } from '../db/validators.js';
+import { z } from 'zod';
 
 export async function projectRoutes(app: FastifyInstance) {
   // List projects
@@ -76,11 +78,11 @@ export async function projectRoutes(app: FastifyInstance) {
     const templateSettings = {
       captionStyleId: template.defaultCaptionStyleId || null,
       captionAnimation: 'word-highlight',
-      hookConfig: template.hookConfig ? JSON.parse(template.hookConfig) : null,
-      ctaConfig: template.ctaConfig ? JSON.parse(template.ctaConfig) : null,
-      colorPalette: template.colorPalette ? JSON.parse(template.colorPalette) : [],
-      layoutConfig: template.layoutConfig ? JSON.parse(template.layoutConfig) : null,
-      musicConfig: template.musicConfig ? JSON.parse(template.musicConfig) : null,
+      hookConfig: parseJsonField(z.any(), template.hookConfig, null),
+      ctaConfig: parseJsonField(CTAConfigSchema, template.ctaConfig, null),
+      colorPalette: parseJsonField(z.any(), template.colorPalette, []),
+      layoutConfig: parseJsonField(LayoutConfigSchema, template.layoutConfig, null),
+      musicConfig: parseJsonField(z.any(), template.musicConfig, null),
     };
 
     // Resolve caption animation from linked style
@@ -103,7 +105,7 @@ export async function projectRoutes(app: FastifyInstance) {
 
     if (projectScenes.length > 0) {
       const effects = template.defaultEffects || '[]';
-      const transitions = template.defaultTransitions ? JSON.parse(template.defaultTransitions) : ['cut'];
+      const transitions = parseJsonField(z.array(z.string()), template.defaultTransitions, ['cut']);
       const defaultTransition = transitions[0] || 'cut';
 
       for (const scene of projectScenes) {

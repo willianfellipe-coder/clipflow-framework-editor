@@ -33,8 +33,24 @@ async function callApi(path: string, method: string = 'GET', body?: unknown) {
 
 const server = new Server(
   { name: 'clipflow', version: '2.0.0' },
-  { capabilities: { tools: {}, sampling: {} } },
+  { capabilities: { tools: {} } },
 );
+
+// ── Shared Types for API Responses ─────────────────────────────
+interface ServerProject {
+  id: string;
+  name: string;
+  nicheId?: string;
+  sourceVideoPath: string;
+  sourceVideoMeta?: string;
+}
+
+interface ServerTranscription {
+  id: string;
+  duration?: number;
+  wordTimestamps?: unknown[];
+  segments?: { start: number; end: number; text: string; speaker?: string }[];
+}
 
 // ═══════════════════════════════════════════════════════════════
 // TOOL DEFINITIONS
@@ -278,9 +294,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const a = args as { project_id: string; niche?: string; user_instructions?: string };
 
         // Load transcription from server
-        const transcription = await callApi(`/api/projects/${a.project_id}/transcription`);
-        const project = await callApi(`/api/projects/${a.project_id}`);
-        const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : {};
+        const transcription = (await callApi(`/api/projects/${a.project_id}/transcription`)) as ServerTranscription;
+        const project = (await callApi(`/api/projects/${a.project_id}`)) as ServerProject;
+        const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : ({} as Record<string, string | number>);
 
         // Return transcription data to Claude Code — it will analyze and call save_analysis
         return {
@@ -323,9 +339,9 @@ After generating the analysis, call **clipflow_save_analysis** with project_id="
       case 'clipflow_analyze_clips': {
         const a = args as { project_id: string; target_duration?: number; number_of_clips?: number; target_platform?: string; niche?: string; tone?: string; custom_instructions?: string };
 
-        const transcription = await callApi(`/api/projects/${a.project_id}/transcription`);
-        const project = await callApi(`/api/projects/${a.project_id}`);
-        const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : {};
+        const transcription = (await callApi(`/api/projects/${a.project_id}/transcription`)) as ServerTranscription;
+        const project = (await callApi(`/api/projects/${a.project_id}`)) as ServerProject;
+        const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : ({} as Record<string, string | number>);
 
         const platform = a.target_platform || 'tiktok';
         const duration = a.target_duration || 30;
@@ -429,12 +445,12 @@ After generating clips, call **clipflow_save_clips** with project_id="${a.projec
 
       case 'clipflow_batch_process': {
         const a = args as { video_paths: string[]; template_id?: string; formats?: string[] };
-        const result = await callApi('/api/batch', 'POST', {
+        const result = (await callApi('/api/batch', 'POST', {
           name: `MCP Batch ${new Date().toISOString()}`,
           videoPaths: a.video_paths,
           templateId: a.template_id,
           formats: a.formats || ['reel_9x16'],
-        });
+        })) as { id: string };
         if (result.id) await callApi(`/api/batch/${result.id}/start`, 'POST');
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       }
@@ -494,7 +510,7 @@ async function processMcpAnalysis(project: Record<string, unknown>) {
 
   try {
     // Fetch transcription
-    const transcription = await callApi(`/api/projects/${projectId}/transcription`);
+    const transcription = (await callApi(`/api/projects/${projectId}/transcription`)) as ServerTranscription;
     if (!transcription?.segments?.length) {
       throw new Error('Transcrição não encontrada ou vazia.');
     }

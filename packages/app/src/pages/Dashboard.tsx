@@ -221,13 +221,19 @@ export function Dashboard() {
                 aria-label={project.name}
                 className="cursor-pointer rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
               >
-                <div className="aspect-video overflow-hidden rounded bg-secondary">
+                <div className="aspect-video overflow-hidden rounded bg-secondary relative">
                   <img
                     src={`/static/uploads/${project.id}/thumbnail.jpg`}
                     alt={project.name}
                     className="h-full w-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    onError={(e) => { 
+                      (e.target as HTMLImageElement).style.display = 'none'; 
+                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                    }}
                   />
+                  <div className="hidden absolute inset-0 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-muted-foreground"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>
+                  </div>
                 </div>
                 <h4 className="mt-3 font-medium">{project.name}</h4>
                 <div className="mt-1 flex items-center gap-2">

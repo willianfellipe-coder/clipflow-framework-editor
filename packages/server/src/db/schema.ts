@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 
 // -- Projects --
 export const projects: any = sqliteTable('projects', {
@@ -31,7 +31,9 @@ export const transcriptions: any = sqliteTable('transcriptions', {
   duration: real('duration').notNull(),
   processingTime: real('processing_time'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (t) => [
+  index('idx_transcriptions_project_id').on(t.projectId),
+]);
 
 // -- AI Analyses --
 export const analyses: any = sqliteTable('analyses', {
@@ -49,7 +51,10 @@ export const analyses: any = sqliteTable('analyses', {
   contentScore: integer('content_score'),
   tokensUsed: integer('tokens_used'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (t) => [
+  index('idx_analyses_project_id').on(t.projectId),
+  index('idx_analyses_transcription_id').on(t.transcriptionId),
+]);
 
 // -- Scenes --
 export const scenes: any = sqliteTable('scenes', {
@@ -70,7 +75,10 @@ export const scenes: any = sqliteTable('scenes', {
   transitionOut: text('transition_out'),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (t) => [
+  index('idx_scenes_project_id').on(t.projectId),
+  index('idx_scenes_analysis_id').on(t.analysisId),
+]);
 
 // -- Caption Styles --
 export const captionStyles: any = sqliteTable('caption_styles', {
@@ -97,7 +105,9 @@ export const captionStyles: any = sqliteTable('caption_styles', {
   maxWordsPerLine: integer('max_words_per_line').notNull().default(4),
   shadowConfig: text('shadow_config'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (t) => [
+  index('idx_caption_styles_project_id').on(t.projectId),
+]);
 
 // -- Templates --
 export const templates: any = sqliteTable('templates', {
@@ -147,7 +157,9 @@ export const renders = sqliteTable('renders', {
   compositionProps: text('composition_props'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
-});
+}, (t) => [
+  index('idx_renders_project_id').on(t.projectId),
+]);
 
 // -- Batch Jobs --
 export const batchJobs = sqliteTable('batch_jobs', {
@@ -209,7 +221,10 @@ export const clipAnalyses = sqliteTable('clip_analyses', {
   errorMessage: text('error_message'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
-});
+}, (t) => [
+  index('idx_clip_analyses_project_id').on(t.projectId),
+  index('idx_clip_analyses_transcription_id').on(t.transcriptionId),
+]);
 
 // -- ClipGen: Clips --
 export const clips = sqliteTable('clips', {
@@ -242,7 +257,11 @@ export const clips = sqliteTable('clips', {
   thumbnailPath: text('thumbnail_path'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
-});
+}, (t) => [
+  index('idx_clips_project_id').on(t.projectId),
+  index('idx_clips_analysis_id').on(t.analysisId),
+  index('idx_clips_render_id').on(t.renderId),
+]);
 
 // -- ClipGen: Presets --
 export const clipPresets = sqliteTable('clip_presets', {
@@ -271,4 +290,6 @@ export const chatMessages = sqliteTable('chat_messages', {
   role: text('role', { enum: ['user', 'assistant'] }).notNull(),
   content: text('content').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (t) => [
+  index('idx_chat_messages_project_id').on(t.projectId),
+]);

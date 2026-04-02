@@ -11,6 +11,7 @@ import { PATHS } from '../config.js';
 import { remotionService } from '../services/remotion.service.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, WordTimestampsSchema, CTAConfigSchema, LayoutConfigSchema, ZoomConfigSchema } from '../db/validators.js';
 
 // Track active renders for cancellation
 const activeRenders = new Map<string, { cancelled: boolean }>();
@@ -193,7 +194,7 @@ async function processRender(
     const projectScenes = db.select().from(scenes).where(eq(scenes.projectId, projectId)).all();
     const transcription = db.select().from(transcriptions).where(eq(transcriptions.projectId, projectId)).get();
 
-    const wordTimestamps = transcription ? JSON.parse(transcription.wordTimestamps) : [];
+    const wordTimestamps = transcription ? parseJsonField(WordTimestampsSchema, transcription.wordTimestamps, []) : [];
     const captions = wordTimestamps.map((w: { word: string; start: number; end: number }) => ({
       word: w.word,
       start: w.start,
@@ -242,21 +243,21 @@ async function processRender(
         }
 
         // Resolve CTA from template
-        if (template.ctaConfig) {
-          const cta = JSON.parse(template.ctaConfig);
-          if (cta.enabled) {
+        if (template?.ctaConfig) {
+          const cta = parseJsonField(CTAConfigSchema, template.ctaConfig, null);
+          if (cta?.enabled) {
             ctaConfig = {
               text: cta.text || 'Follow for more!',
-              subtext: cta.subtext,
+              subtext: cta.subtext || '',
               duration: cta.durationSeconds || 3,
             };
           }
         }
 
         // Layout config
-        if (template.layoutConfig) {
-          const layout = JSON.parse(template.layoutConfig);
-          if (layout.showProgressBar !== undefined) showProgressBar = layout.showProgressBar;
+        if (template?.layoutConfig) {
+          const layout = parseJsonField(LayoutConfigSchema, template.layoutConfig, null);
+          if (layout && layout.showProgressBar !== undefined) showProgressBar = layout.showProgressBar;
         }
       }
     }
@@ -268,9 +269,9 @@ async function processRender(
         startTime: s.startTime,
         endTime: s.endTime,
         type: s.type,
-        transitionIn: s.transitionIn || 'cut',
-        transitionOut: s.transitionOut || 'cut',
-        zoomConfig: s.zoomConfig ? JSON.parse(s.zoomConfig) : null,
+        transitionIn: s.transitionIn || 'none',
+        transitionOut: s.transitionOut || 'none',
+        zoomConfig: parseJsonField(ZoomConfigSchema, s.zoomConfig, null),
       })),
       captions,
       captionStyle,

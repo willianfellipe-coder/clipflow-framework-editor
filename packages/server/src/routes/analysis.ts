@@ -7,6 +7,8 @@ import { aiProvider } from '../services/ai-provider.js';
 import { config } from '../config.js';
 import { broadcast } from '../plugins/websocket.js';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, WordTimestampsSchema, SegmentsSchema } from '../db/validators.js';
+import { z } from 'zod';
 
 export async function analysisRoutes(app: FastifyInstance) {
   // Trigger AI analysis
@@ -84,11 +86,11 @@ export async function analysisRoutes(app: FastifyInstance) {
 
     return {
       ...row,
-      scenePlan: JSON.parse(row.scenePlan),
-      suggestedCuts: row.suggestedCuts ? JSON.parse(row.suggestedCuts) : null,
-      suggestedEffects: row.suggestedEffects ? JSON.parse(row.suggestedEffects) : null,
-      hookAnalysis: row.hookAnalysis ? JSON.parse(row.hookAnalysis) : null,
-      ctaAnalysis: row.ctaAnalysis ? JSON.parse(row.ctaAnalysis) : null,
+      scenePlan: parseJsonField(z.any(), row.scenePlan, []),
+      suggestedCuts: parseJsonField(z.any(), row.suggestedCuts, null),
+      suggestedEffects: parseJsonField(z.any(), row.suggestedEffects, null),
+      hookAnalysis: parseJsonField(z.any(), row.hookAnalysis, null),
+      ctaAnalysis: parseJsonField(z.any(), row.ctaAnalysis, null),
     };
   });
 
@@ -190,8 +192,8 @@ async function processAnalysis(
   broadcast('analysis:progress', { projectId, stage: 'Preparing transcription data...' });
 
   // Parse transcription data
-  const segments = JSON.parse(transcription.segments);
-  const wordTimestamps = JSON.parse(transcription.wordTimestamps);
+  const segments = parseJsonField(SegmentsSchema, transcription.segments, []);
+  const wordTimestamps = parseJsonField(WordTimestampsSchema, transcription.wordTimestamps, []);
 
   // Load template if specified
   let template = null;

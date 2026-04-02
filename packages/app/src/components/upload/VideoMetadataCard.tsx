@@ -35,14 +35,21 @@ export function VideoMetadataCard({
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex gap-5">
         {/* Thumbnail */}
-        <div className="h-32 w-24 shrink-0 overflow-hidden rounded bg-secondary">
+        <div className="h-32 w-24 shrink-0 overflow-hidden rounded bg-secondary relative">
           {thumbnailUrl ? (
-            <img src={thumbnailUrl} alt={name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <Film className="h-8 w-8 text-muted-foreground" />
-            </div>
-          )}
+            <img 
+              src={thumbnailUrl} 
+              alt={name} 
+              className="h-full w-full object-cover" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <div className={`absolute inset-0 flex items-center justify-center ${thumbnailUrl ? 'hidden' : ''}`}>
+            <Film className="h-8 w-8 text-muted-foreground" />
+          </div>
         </div>
 
         {/* Info */}

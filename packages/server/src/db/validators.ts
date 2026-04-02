@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { WordTimestamp } from '@clip/shared';
 
 /**
  * DAT-004: Centralised Zod schemas for JSON fields stored as TEXT in SQLite.
@@ -54,10 +55,10 @@ export const WordTimestampSchema = z.object({
   word:       z.string(),
   start:      z.number().min(0),
   end:        z.number().min(0),
-  confidence: z.number().min(0).max(1).optional(),
+  confidence: z.number().min(0).max(1).default(1),
   speaker:    z.string().optional(),
 });
-export const WordTimestampsSchema = z.array(WordTimestampSchema);
+export const WordTimestampsSchema = z.array(WordTimestampSchema) as z.ZodType<WordTimestamp[]>;
 
 // ── Transcription segment ─────────────────────────────────────────────────
 export const SegmentSchema = z.object({

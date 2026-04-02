@@ -21,7 +21,7 @@ interface TemplateCreateFormProps {
 }
 
 const EFFECTS = ['zoom_punch', 'flash_on_beat', 'slow_zoom', 'screen_zoom', 'cursor_highlight', 'warm_grade', 'text_callout', 'product_spotlight', 'speaker_zoom', 'waveform_bg'];
-const TRANSITIONS = ['cut', 'fade', 'slide', 'whip_pan', 'dissolve', 'zoom', 'morph'];
+const TRANSITIONS = ['cut', 'fade'];
 const HOOK_STRATEGIES = ['before_after', 'problem_statement', 'end_result_first', 'curiosity_gap', 'urgency', 'controversial_quote'];
 const CTA_STYLES = ['follow_for_more', 'link_in_bio', 'save_recipe', 'follow_for_tips', 'shop_now', 'full_episode_link'];
 const CAPTION_ANIMATIONS = ['word-highlight', 'karaoke', 'pop', 'glow', 'none'];

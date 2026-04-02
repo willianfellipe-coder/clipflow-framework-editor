@@ -4,6 +4,8 @@ import { db } from '../db/index.js';
 import { templates } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, CTAConfigSchema, LayoutConfigSchema } from '../db/validators.js';
+import { z } from 'zod';
 
 export async function templateRoutes(app: FastifyInstance) {
   // List templates
@@ -106,13 +108,13 @@ export async function templateRoutes(app: FastifyInstance) {
 
     return {
       ...row,
-      defaultEffects: row.defaultEffects ? JSON.parse(row.defaultEffects) : [],
-      defaultTransitions: row.defaultTransitions ? JSON.parse(row.defaultTransitions) : [],
-      colorPalette: row.colorPalette ? JSON.parse(row.colorPalette) : [],
-      hookConfig: row.hookConfig ? JSON.parse(row.hookConfig) : null,
-      ctaConfig: row.ctaConfig ? JSON.parse(row.ctaConfig) : null,
-      musicConfig: row.musicConfig ? JSON.parse(row.musicConfig) : null,
-      layoutConfig: row.layoutConfig ? JSON.parse(row.layoutConfig) : null,
+      defaultEffects: parseJsonField(z.array(z.string()), row.defaultEffects, []),
+      defaultTransitions: parseJsonField(z.array(z.string()), row.defaultTransitions, []),
+      colorPalette: parseJsonField(z.array(z.string()), row.colorPalette, []),
+      hookConfig: parseJsonField(z.any(), row.hookConfig, null),
+      ctaConfig: parseJsonField(CTAConfigSchema, row.ctaConfig, null),
+      musicConfig: parseJsonField(z.any(), row.musicConfig, null),
+      layoutConfig: parseJsonField(LayoutConfigSchema, row.layoutConfig, null),
     };
   });
 }

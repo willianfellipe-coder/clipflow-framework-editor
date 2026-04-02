@@ -4,6 +4,7 @@ import { db } from '../db/index.js';
 import { transcriptions, captionStyles } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, WordTimestampsSchema, SegmentsSchema } from '../db/validators.js';
 
 export async function captionRoutes(app: FastifyInstance) {
   // Get captions (word timestamps from transcription)
@@ -16,8 +17,8 @@ export async function captionRoutes(app: FastifyInstance) {
 
     return {
       projectId: request.params.id,
-      wordTimestamps: JSON.parse(row.wordTimestamps),
-      segments: JSON.parse(row.segments),
+      wordTimestamps: parseJsonField(WordTimestampsSchema, row.wordTimestamps, []),
+      segments: parseJsonField(SegmentsSchema, row.segments, []),
       language: row.language,
     };
   });

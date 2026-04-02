@@ -5,7 +5,10 @@ import { projects, transcriptions, clips, clipAnalyses, clipPresets } from '../d
 import { eq, desc, asc } from 'drizzle-orm';
 import { aiProvider } from '../services/ai-provider.js';
 import { broadcast } from '../plugins/websocket.js';
+import { clipGenService } from '../services/clipgen.service.js';
 import { AppError } from '../utils/errors.js';
+import { parseJsonField, WordTimestampsSchema, SegmentsSchema, VideoMetaSchema, ZoomConfigSchema, CTAConfigSchema } from '../db/validators.js';
+import { z } from 'zod';
 import type { ClipAnalysisRequest } from '@clip/shared';
 
 export async function clipRoutes(app: FastifyInstance) {
@@ -75,9 +78,9 @@ export async function clipRoutes(app: FastifyInstance) {
 
     return rows.map((r) => ({
       ...r,
-      suggestedHashtags: r.suggestedHashtags ? JSON.parse(r.suggestedHashtags) : [],
-      zoomConfig: r.zoomConfig ? JSON.parse(r.zoomConfig) : null,
-      ctaConfig: r.ctaConfig ? JSON.parse(r.ctaConfig) : null,
+      suggestedHashtags: parseJsonField(z.array(z.string()), r.suggestedHashtags, []),
+      zoomConfig: parseJsonField(ZoomConfigSchema, r.zoomConfig, null),
+      ctaConfig: parseJsonField(CTAConfigSchema, r.ctaConfig, null),
     }));
   });
 
@@ -265,9 +268,9 @@ async function processClipAnalysis(
   db.update(clipAnalyses).set({ status: 'processing' }).where(eq(clipAnalyses.id, analysisId)).run();
   broadcast('clipgen:progress', { analysisId, stage: 'Analyzing transcription for viral moments...' });
 
-  const segments = JSON.parse(transcription.segments);
-  const wordTimestamps = JSON.parse(transcription.wordTimestamps);
-  const meta = project.sourceVideoMeta ? JSON.parse(project.sourceVideoMeta) : { duration: 0, width: 1080, height: 1920 };
+  const segments = parseJsonField(SegmentsSchema, transcription.segments, []);
+  const wordTimestamps = parseJsonField(WordTimestampsSchema, transcription.wordTimestamps, []);
+  const meta = parseJsonField(VideoMetaSchema, project.sourceVideoMeta, { width: 1080, height: 1920, duration: 0, fps: 30, codec: '' });
 
   const result = await aiProvider.analyzeForClips(
     { segments, wordTimestamps, language: transcription.language },
